@@ -31,6 +31,7 @@ def save_json(path, value):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-email", action="store_true")
+    parser.add_argument("--email-baseline", action="store_true")
     parser.add_argument("--fixture", help="Use a local JSON product snapshot (tests only)")
     args = parser.parse_args()
     config = load_json(ROOT / "config.json", {})
@@ -51,16 +52,20 @@ def main():
     )
     updated_history = history + events
     workbook_path = DATA / "coles-product-change-history.xlsx"
-    write_workbook(workbook_path, updated_history)
+    write_workbook(workbook_path, updated_history, current)
     save_json(DATA / "current.json", current)
     save_json(DATA / "events.json", updated_history)
     print(json.dumps({"products": len(current), "changes": len(events), "baseline": first_run}))
-    if first_run or not events or args.no_email:
+    if args.no_email:
         return
     password = os.environ.get("GMAIL_APP_PASSWORD", "")
+    should_email = (first_run and args.email_baseline) or (not first_run and bool(events))
+    if not should_email:
+        return
     if not password:
         raise RuntimeError("GMAIL_APP_PASSWORD is required when changes need to be emailed")
-    send_email(config["sender"], config["recipient"], password, events, workbook_path)
+    send_email(config["sender"], config["recipient"], password, events, workbook_path,
+               baseline=current if first_run else None)
 
 
 if __name__ == "__main__":

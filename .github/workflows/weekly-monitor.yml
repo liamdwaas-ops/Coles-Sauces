@@ -1,6 +1,14 @@
 name: Weekly Coles product monitor
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/weekly-monitor.yml"
+      - "coles_monitor/**"
+      - "config.json"
+      - "requirements.txt"
+      - "run_monitor.py"
   schedule:
     # 06:00 AEST every Wednesday (fixed UTC+10; 07:00 local during AEDT).
     - cron: "0 20 * * 2"
@@ -37,7 +45,7 @@ jobs:
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           COLES_BUILD_ID: ${{ secrets.COLES_BUILD_ID }}
-        run: python run_monitor.py
+        run: python run_monitor.py ${{ github.event_name == 'push' && '--email-baseline' || '' }}
 
       - name: Commit updated snapshot and history
         run: |
@@ -57,4 +65,3 @@ jobs:
           name: coles-product-change-history
           path: data/coles-product-change-history.xlsx
           if-no-files-found: error
-

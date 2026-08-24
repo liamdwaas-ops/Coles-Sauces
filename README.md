@@ -11,7 +11,7 @@ It records product-name, current-price, pack-size and primary-image changes, plu
 
 Pricing is fixed to the Coles delivery context for **Cheltenham VIC 3192**, configured in `config.json`.
 
-The first successful run creates a silent baseline. Later runs send an email only when at least one new, previously unreported change exists. Product names in the HTML email and Excel history link to their Coles product pages. No-change runs send nothing. Removed or temporarily unavailable products are deliberately not reported because the requested change types do not include removals.
+The first successful run emails the complete baseline once. Later runs send an email only when at least one new, previously unreported change exists. Product names in the HTML email and Excel workbook link to their Coles product pages. No-change runs send nothing. Removed or temporarily unavailable products are deliberately not reported because the requested change types do not include removals.
 
 ## Schedule
 
@@ -24,7 +24,7 @@ The workflow runs at `20:00 UTC Tuesday`, which is **06:00 AEST Wednesday**. Bec
    - `GMAIL_APP_PASSWORD`: a Google App Password for `liamdwaas@gmail.com` (never use or commit the normal Google password).
    - `COLES_BUILD_ID`: optional fallback containing the current Coles Next.js `buildId`. The monitor first attempts automatic discovery. Add/update this only if a run says Coles blocked discovery.
 3. In **Settings → Actions → General → Workflow permissions**, select **Read and write permissions** so the workflow can commit its history.
-4. In **Actions → Weekly Coles product monitor**, choose **Run workflow** once. The first successful run is the silent baseline.
+4. Pushing the initial setup creates and emails the baseline. **Actions → Weekly Coles product monitor → Run workflow** remains available for diagnostics, but a manual run does not resend an existing baseline.
 
 Google App Passwords require 2-Step Verification. If Google Workspace policy blocks App Passwords, use an approved SMTP relay and adapt `send_email` in `coles_monitor/reporting.py`.
 
