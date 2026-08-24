@@ -19,8 +19,8 @@ class MatcherTests(unittest.TestCase):
 
 
 class LocationTests(unittest.TestCase):
-    def test_highett_location_is_retained(self):
-        location = {"suburb": "Highett", "postcode": "3190", "state": "VIC",
+    def test_cheltenham_location_is_retained(self):
+        location = {"suburb": "Cheltenham", "postcode": "3192", "state": "VIC",
                     "context_mode": "delivery"}
         scraper = ColesScraper(location=location)
         self.assertEqual(scraper.location, location)

@@ -4,8 +4,8 @@
   "max_pages_per_query": 20,
   "request_delay_seconds": 1.0,
   "location": {
-    "suburb": "Highett",
-    "postcode": "3190",
+    "suburb": "Cheltenham",
+    "postcode": "3192",
     "state": "VIC",
     "context_mode": "delivery"
   },

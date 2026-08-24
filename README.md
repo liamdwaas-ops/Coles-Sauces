@@ -9,7 +9,7 @@ This repository checks Coles once a week for products whose **name** matches one
 
 It records product-name, current-price, pack-size and primary-image changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour.
 
-Pricing is fixed to the Coles delivery context for **Highett VIC 3190**, configured in `config.json`. Highett is used as a postcode-based delivery location because no Coles supermarket in Highett itself was verified; the monitor does not silently substitute a nearby store.
+Pricing is fixed to the Coles delivery context for **Cheltenham VIC 3192**, configured in `config.json`.
 
 The first successful run creates a silent baseline. Later runs send an email only when at least one new, previously unreported change exists. Product names in the HTML email and Excel history link to their Coles product pages. No-change runs send nothing. Removed or temporarily unavailable products are deliberately not reported because the requested change types do not include removals.
 
@@ -33,7 +33,7 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 - A run that is blocked, empty, malformed or incomplete fails without replacing the last good snapshot.
 - Change events have deterministic IDs and are stored in `data/events.json`, preventing duplicate reports.
 - The complete audit history is kept in `data/coles-product-change-history.xlsx` and uploaded as a workflow artifact.
-- Every search includes postcode `3190`, state `VIC` and delivery context. Prices should be treated as Coles online prices for that location, not as a claim about shelf prices at an unspecified physical store.
+- Every search includes postcode `3192`, state `VIC` and delivery context. Prices should be treated as Coles online prices for that location, not as a claim about shelf prices at an unspecified physical store.
 
 ## Local test
 
