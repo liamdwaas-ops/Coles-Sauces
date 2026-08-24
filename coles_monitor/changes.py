@@ -32,6 +32,7 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                 "event_id": event_id,
                 "observed_at": observed_at,
                 "product_id": product_id,
+                "retailer": product.get("retailer", ""),
                 "change_type": change_type,
                 "before": before,
                 "after": after,
@@ -42,4 +43,3 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                 "product_url": product.get("product_url", ""),
             })
     return events
-

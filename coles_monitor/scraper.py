@@ -102,7 +102,7 @@ class ColesScraper:
         except (TypeError, ValueError):
             price = normalize(price)
         return product_id, {
-            "name": name, "price": price, "size": size, "image_url": uri,
+            "retailer": "Coles", "name": name, "price": price, "size": size, "image_url": uri,
             "product_url": product_url, "source": product_url,
         }
 
@@ -132,7 +132,7 @@ class ColesScraper:
                     continue
                 product_id, product = self._product(raw)
                 if product_id and is_wanted_name(product["name"]):
-                    found[product_id] = product
+                    found["coles:" + product_id] = product
             total = metadata.get("totalResults") or metadata.get("total") or metadata.get("totalCount")
             if total is not None and page * self.page_size >= int(total):
                 break

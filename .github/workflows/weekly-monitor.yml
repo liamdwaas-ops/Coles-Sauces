@@ -55,13 +55,13 @@ jobs:
           fi
           git config user.name "coles-monitor[bot]"
           git config user.email "coles-monitor[bot]@users.noreply.github.com"
-          git add data/current.json data/events.json data/coles-product-change-history.xlsx
+          git add data/current.json data/events.json data/coles-woolworths-sauce-change-history.xlsx
           git commit -m "Update Coles product snapshot"
           git push
 
       - name: Upload Excel history
         uses: actions/upload-artifact@v4
         with:
-          name: coles-product-change-history
-          path: data/coles-product-change-history.xlsx
+          name: coles-woolworths-sauce-change-history
+          path: data/coles-woolworths-sauce-change-history.xlsx
           if-no-files-found: error

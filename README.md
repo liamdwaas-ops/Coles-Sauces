@@ -1,6 +1,6 @@
-# Coles product change monitor
+# Coles and Woolworths sauce product change monitor
 
-This repository checks Coles once a week for products whose **name** matches one of these rules:
+This repository checks Coles and Woolworths once a week for products whose **name** matches one of these rules:
 
 - contains both whole words `pasta` and `sauce` (in any order)
 - contains both whole words `tomato` and `paste` (in any order)
@@ -9,7 +9,7 @@ This repository checks Coles once a week for products whose **name** matches one
 
 It records product-name, current-price, pack-size and primary-image changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour.
 
-Pricing is fixed to the Coles delivery context for **Cheltenham VIC 3192**, configured in `config.json`.
+Pricing requests for both retailers are fixed to the online delivery context for **Cheltenham VIC 3192**, configured in `config.json`.
 
 The first successful run emails the complete baseline once. Later runs send an email only when at least one new, previously unreported change exists. Product names in the HTML email and Excel workbook link to their Coles product pages. No-change runs send nothing. Removed or temporarily unavailable products are deliberately not reported because the requested change types do not include removals.
 
@@ -30,10 +30,10 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 
 ## Data integrity behavior
 
-- A run that is blocked, empty, malformed or incomplete fails without replacing the last good snapshot.
+- A run where either retailer is blocked, empty, malformed or incomplete fails without replacing the last good combined snapshot or sending a partial report.
 - Change events have deterministic IDs and are stored in `data/events.json`, preventing duplicate reports.
-- The complete audit history is kept in `data/coles-product-change-history.xlsx` and uploaded as a workflow artifact.
-- Every search includes postcode `3192`, state `VIC` and delivery context. Prices should be treated as Coles online prices for that location, not as a claim about shelf prices at an unspecified physical store.
+- The complete audit history and current combined catalogue are kept in `data/coles-woolworths-sauce-change-history.xlsx` and uploaded as a workflow artifact.
+- Every search includes postcode `3192` and delivery context. Prices should be treated as online prices returned for that location, not as a claim about shelf prices at an unspecified physical store.
 
 ## Local test
 

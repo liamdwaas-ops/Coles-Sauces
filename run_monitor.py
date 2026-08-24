@@ -7,6 +7,7 @@ from pathlib import Path
 from coles_monitor.changes import compare
 from coles_monitor.reporting import send_email, write_workbook
 from coles_monitor.scraper import ColesScraper
+from coles_monitor.woolworths import WoolworthsScraper
 
 
 ROOT = Path(__file__).resolve().parent
@@ -40,18 +41,23 @@ def main():
     if args.fixture:
         current = load_json(Path(args.fixture), {})
     else:
-        scraper = ColesScraper(
+        coles = ColesScraper(
             config["request_delay_seconds"], config["max_pages_per_query"],
             config["page_size"], config.get("location")
         )
-        current = scraper.scrape(config["queries"])
+        woolworths = WoolworthsScraper(
+            config["request_delay_seconds"], config["max_pages_per_query"],
+            config["page_size"], config.get("location")
+        )
+        current = coles.scrape(config["queries"])
+        current.update(woolworths.scrape(config["queries"]))
     observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     first_run = not previous
     events = [] if first_run else compare(
         previous, current, observed_at, (e["event_id"] for e in history)
     )
     updated_history = history + events
-    workbook_path = DATA / "coles-product-change-history.xlsx"
+    workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
     write_workbook(workbook_path, updated_history, current)
     save_json(DATA / "current.json", current)
     save_json(DATA / "events.json", updated_history)

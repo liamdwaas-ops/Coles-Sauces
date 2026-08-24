@@ -1,5 +1,6 @@
 {
   "queries": ["pasta sauce", "tomato paste", "pesto", "passata"],
+  "retailers": ["Coles", "Woolworths"],
   "page_size": 48,
   "max_pages_per_query": 20,
   "request_delay_seconds": 1.0,

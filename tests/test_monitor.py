@@ -3,6 +3,7 @@ import unittest
 from coles_monitor.changes import compare
 from coles_monitor.matcher import is_wanted_name, split_name_size
 from coles_monitor.scraper import ColesScraper
+from coles_monitor.woolworths import WoolworthsScraper
 
 
 class MatcherTests(unittest.TestCase):
@@ -24,6 +25,26 @@ class LocationTests(unittest.TestCase):
                     "context_mode": "delivery"}
         scraper = ColesScraper(location=location)
         self.assertEqual(scraper.location, location)
+
+
+class WoolworthsTests(unittest.TestCase):
+    def test_nested_search_response_mapping(self):
+        payload = {"Products": [{"Products": [{
+            "Stockcode": 502381,
+            "Name": "Woolworths Passata 680g",
+            "PackageSize": "680g",
+            "Price": 2.25,
+            "MediumImageFile": "https://cdn.example.test/502381.jpg",
+            "UrlFriendlyName": "woolworths-passata"
+        }]}]}
+        products = WoolworthsScraper._find_products(payload)
+        self.assertEqual(len(products), 1)
+        product_id, product = WoolworthsScraper._product(products[0])
+        self.assertEqual(product_id, "woolworths:502381")
+        self.assertEqual(product["retailer"], "Woolworths")
+        self.assertEqual(product["name"], "Woolworths Passata")
+        self.assertEqual(product["size"], "680g")
+        self.assertEqual(product["price"], 2.25)
 
 
 class ChangeTests(unittest.TestCase):
