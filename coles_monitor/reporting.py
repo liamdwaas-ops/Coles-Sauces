@@ -9,7 +9,7 @@ from openpyxl.utils import get_column_letter
 
 
 HEADERS = ["Observed (UTC)", "Retailer", "Change", "Product", "Before", "After",
-           "Price (AUD)", "Size", "Image URL", "Product URL", "Event ID"]
+           "Price (AUD)", "Online Only", "Size", "Image URL", "Product URL", "Event ID"]
 
 
 def _style_sheet(ws, widths):
@@ -33,32 +33,32 @@ def write_workbook(path, events, current=None):
     for event in events:
         ws.append([event["observed_at"], event.get("retailer", ""), event["change_type"],
                    event["name"], event["before"], event["after"], event["price"],
-                   event["size"], event["image_url"],
+                   "Yes" if event.get("online_only") else "No", event["size"], event["image_url"],
                    event["product_url"], event["event_id"]])
         row = ws.max_row
         ws.cell(row, 4).hyperlink = event["product_url"]
         ws.cell(row, 4).style = "Hyperlink"
         if event["image_url"]:
-            ws.cell(row, 9).hyperlink = event["image_url"]
-            ws.cell(row, 9).style = "Hyperlink"
-    _style_sheet(ws, [22, 14, 18, 48, 30, 30, 14, 14, 52, 52, 28])
+            ws.cell(row, 10).hyperlink = event["image_url"]
+            ws.cell(row, 10).style = "Hyperlink"
+    _style_sheet(ws, [22, 14, 18, 48, 30, 30, 14, 13, 14, 52, 52, 28])
     for cell in ws["G"][1:]:
         cell.number_format = '"$"0.00'
     if current is not None:
         products = wb.create_sheet("Current Products", 0)
-        products.append(["Product ID", "Retailer", "Product", "Price (AUD)", "Size", "Image URL", "Product URL"])
+        products.append(["Product ID", "Retailer", "Product", "Price (AUD)", "Online Only", "Size", "Image URL", "Product URL"])
         for product_id, product in sorted(current.items(), key=lambda item: (item[1].get("retailer", ""), item[1]["name"].lower())):
             products.append([product_id, product.get("retailer", ""), product["name"],
-                             product["price"], product["size"],
+                             product["price"], "Yes" if product.get("online_only") else "No", product["size"],
                              product["image_url"], product["product_url"]])
             row = products.max_row
             products.cell(row, 3).hyperlink = product["product_url"]
             products.cell(row, 3).style = "Hyperlink"
             if product["image_url"]:
-                products.cell(row, 6).hyperlink = product["image_url"]
-                products.cell(row, 6).style = "Hyperlink"
+                products.cell(row, 7).hyperlink = product["image_url"]
+                products.cell(row, 7).style = "Hyperlink"
             products.cell(row, 4).number_format = '"$"0.00'
-        _style_sheet(products, [18, 14, 50, 14, 14, 52, 52])
+        _style_sheet(products, [18, 14, 50, 14, 13, 14, 52, 52])
     wb.save(path)
 
 
@@ -71,10 +71,10 @@ def render_html(events):
         price = "" if e["price"] is None else f'${float(e["price"]):.2f}'
         rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in [escape(e.get("retailer", "")), escape(e["change_type"]), name,
                     escape(str(e["before"] or "")), escape(str(e["after"] or "")), price,
-                    escape(e["size"]), image]) + "</tr>")
+                    "Yes" if e.get("online_only") else "No", escape(e["size"]), image]) + "</tr>")
     return """<!doctype html><html><body><p>Changes detected since the previous successful weekly run:</p>
 <table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
-<th>Retailer</th><th>Change</th><th>Product</th><th>Before</th><th>After</th><th>Price</th><th>Size</th><th>Image</th>
+<th>Retailer</th><th>Change</th><th>Product</th><th>Before</th><th>After</th><th>Price</th><th>Online Only</th><th>Size</th><th>Image</th>
 </tr></thead><tbody>""" + "".join(rows) + "</tbody></table><p>Source: Coles product pages linked above.</p></body></html>"
 
 
@@ -86,10 +86,12 @@ def render_baseline_html(current):
                  if product["image_url"] else "")
         price = "" if product["price"] is None else f'${float(product["price"]):.2f}'
         rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
-                    [escape(product.get("retailer", "")), name, price, escape(product["size"]), image]) + "</tr>")
+                    [escape(product.get("retailer", "")), name, price,
+                     "Yes" if product.get("online_only") else "No",
+                     escape(product["size"]), image]) + "</tr>")
     return """<!doctype html><html><body><p>Initial Coles and Woolworths product baseline for Cheltenham VIC 3192:</p>
 <table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
-<th>Retailer</th><th>Product</th><th>Price</th><th>Size</th><th>Image</th></tr></thead><tbody>""" + \
+<th>Retailer</th><th>Product</th><th>Price</th><th>Online Only</th><th>Size</th><th>Image</th></tr></thead><tbody>""" + \
         "".join(rows) + "</tbody></table><p>Future emails will contain only new changes.</p></body></html>"
 
 

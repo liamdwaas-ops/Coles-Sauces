@@ -7,7 +7,7 @@ This repository checks Coles and Woolworths once a week for products whose **nam
 - contains the whole word `pesto`
 - contains the whole word `passata`
 
-It records product-name, current-price, pack-size and primary-image changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour.
+It records product-name, current-price, pack-size, primary-image and **Online Only** status changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour. Online-only prices remain in the report and are visibly flagged.
 
 Pricing requests for both retailers are fixed to the online delivery context for **Cheltenham VIC 3192**, configured in `config.json`.
 
@@ -31,6 +31,9 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 ## Data integrity behavior
 
 - A run where either retailer is blocked, empty, malformed or incomplete fails without replacing the last good combined snapshot or sending a partial report.
+- Coles' flag comes from `pricing.onlineSpecial`/an online promotion label; Woolworths' flag comes from `IsOnlineOnly`. The monitor does not infer this status from price differences.
+- Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used.
+- Coles build-ID discovery is automatic. `config.json` also contains a last-known build ID verified from the live homepage on 2026-08-24, used only if homepage discovery is challenged; a stale ID makes the run fail safely rather than emit partial data.
 - Change events have deterministic IDs and are stored in `data/events.json`, preventing duplicate reports.
 - The complete audit history and current combined catalogue are kept in `data/coles-woolworths-sauce-change-history.xlsx` and uploaded as a workflow artifact.
 - Every search includes postcode `3192` and delivery context. Prices should be treated as online prices returned for that location, not as a claim about shelf prices at an unspecified physical store.

@@ -2,7 +2,7 @@ import hashlib
 import json
 
 
-FIELDS = ("name", "price", "size", "image_url")
+FIELDS = ("name", "price", "size", "image_url", "online_only")
 
 
 def stable_event_id(product_id, change_type, before, after):
@@ -23,7 +23,8 @@ def compare(previous, current, observed_at, seen_event_ids=()):
             for field in FIELDS:
                 before, after = old.get(field), product.get(field)
                 if before != after:
-                    candidates.append((field.replace("_url", "").title() + " changed", before, after))
+                    label = "Online Only status" if field == "online_only" else field.replace("_url", "").title()
+                    candidates.append((label + " changed", before, after))
         for change_type, before, after in candidates:
             event_id = stable_event_id(product_id, change_type, before, after)
             if event_id in seen:
@@ -40,6 +41,7 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                 "price": product.get("price"),
                 "size": product.get("size", ""),
                 "image_url": product.get("image_url", ""),
+                "online_only": bool(product.get("online_only")),
                 "product_url": product.get("product_url", ""),
             })
     return events

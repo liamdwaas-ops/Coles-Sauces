@@ -1,7 +1,8 @@
 import time
 from urllib.parse import quote_plus
 
-import requests
+from curl_cffi import requests
+from curl_cffi.const import CurlHttpVersion
 
 from .matcher import is_wanted_name, normalize, split_name_size
 from .scraper import ScrapeError, USER_AGENT
@@ -17,9 +18,9 @@ class WoolworthsScraper:
         self.max_pages = max_pages
         self.page_size = min(page_size, 36)
         self.location = location or {}
-        self.session = requests.Session()
+        self.session = requests.Session(impersonate="chrome")
+        self.primed = False
         self.session.headers.update({
-            "User-Agent": USER_AGENT,
             "Accept": "application/json",
             "Content-Type": "application/json",
             "Origin": BASE_URL,
@@ -72,12 +73,21 @@ class WoolworthsScraper:
             price = normalize(price)
         return "woolworths:" + product_id, {
             "retailer": "Woolworths", "name": name, "price": price, "size": size,
+            "online_only": bool(raw.get("IsOnlineOnly")),
             "image_url": image, "product_url": product_url, "source": product_url,
         }
 
     def search(self, query):
         found = {}
         postcode = self.location.get("postcode", "")
+        if not self.primed:
+            try:
+                self.session.get(
+                    BASE_URL + "/shop/search/products?searchTerm=pesto", timeout=45
+                ).raise_for_status()
+                self.primed = True
+            except requests.RequestsError as exc:
+                raise ScrapeError(f"Woolworths session setup failed: {exc}") from exc
         for page in range(1, self.max_pages + 1):
             location_url = f"/shop/search/products?searchTerm={quote_plus(query)}"
             if postcode:
@@ -94,10 +104,12 @@ class WoolworthsScraper:
             try:
                 response = self.session.post(
                     SEARCH_URL, json=body, timeout=40,
-                    headers={"Referer": BASE_URL + location_url},
+                    http_version=CurlHttpVersion.V1_1,
+                    headers={"Referer": BASE_URL + location_url,
+                             "X-Requested-With": "XMLHttpRequest"},
                 )
                 response.raise_for_status()
-            except requests.RequestException as exc:
+            except requests.RequestsError as exc:
                 raise ScrapeError(f"Woolworths search failed: {exc}") from exc
             if "json" not in response.headers.get("content-type", "").lower():
                 raise ScrapeError("Woolworths returned a non-JSON response. No report was generated.")

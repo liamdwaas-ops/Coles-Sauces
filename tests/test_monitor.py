@@ -45,6 +45,27 @@ class WoolworthsTests(unittest.TestCase):
         self.assertEqual(product["name"], "Woolworths Passata")
         self.assertEqual(product["size"], "680g")
         self.assertEqual(product["price"], 2.25)
+        self.assertFalse(product["online_only"])
+
+    def test_woolworths_online_only_flag(self):
+        _, product = WoolworthsScraper._product({
+            "Stockcode": 99, "Name": "Example Pesto 190g", "PackageSize": "190g",
+            "Price": 4.0, "IsOnlineOnly": True
+        })
+        self.assertTrue(product["online_only"])
+
+
+class OnlineOnlyChangeTests(unittest.TestCase):
+    def test_status_change_is_reported(self):
+        old = {"coles:1": {"name": "A Pesto", "price": 2.0, "size": "100g",
+                           "image_url": "a", "online_only": False}}
+        new = {"coles:1": {"retailer": "Coles", "name": "A Pesto", "price": 2.0,
+                           "size": "100g", "image_url": "a", "online_only": True,
+                           "product_url": "u"}}
+        events = compare(old, new, "2026-01-01T00:00:00+00:00")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["change_type"], "Online Only status changed")
+        self.assertTrue(events[0]["online_only"])
 
 
 class ChangeTests(unittest.TestCase):

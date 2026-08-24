@@ -43,7 +43,8 @@ def main():
     else:
         coles = ColesScraper(
             config["request_delay_seconds"], config["max_pages_per_query"],
-            config["page_size"], config.get("location")
+            config["page_size"], config.get("location"),
+            config.get("coles_verified_build_id_fallback", "")
         )
         woolworths = WoolworthsScraper(
             config["request_delay_seconds"], config["max_pages_per_query"],

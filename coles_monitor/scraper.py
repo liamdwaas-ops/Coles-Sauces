@@ -5,7 +5,7 @@ import re
 import time
 from urllib.parse import quote, urlencode
 
-import requests
+from curl_cffi import requests
 
 from .matcher import is_wanted_name, normalize, split_name_size
 
@@ -19,32 +19,44 @@ class ScrapeError(RuntimeError):
 
 
 class ColesScraper:
-    def __init__(self, delay=1.0, max_pages=20, page_size=48, location=None):
+    def __init__(self, delay=1.0, max_pages=20, page_size=48, location=None,
+                 verified_build_id_fallback=""):
         self.delay = delay
         self.max_pages = max_pages
         self.page_size = page_size
         self.location = location or {}
-        self.session = requests.Session()
-        self.session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/json,text/html"})
-        self.build_id = os.getenv("COLES_BUILD_ID", "").strip()
+        self.session = requests.Session(impersonate="chrome")
+        self.session.headers.update({"Accept": "application/json,text/html"})
+        self.build_id = (os.getenv("COLES_BUILD_ID", "").strip() or
+                         normalize(verified_build_id_fallback))
 
     def _get(self, url, **kwargs):
         response = self.session.get(url, timeout=35, **kwargs)
         response.raise_for_status()
         return response
 
-    def discover_build_id(self):
-        if self.build_id:
+    def discover_build_id(self, force=False):
+        if self.build_id and not force:
             return self.build_id
-        for path in ("/", "/search/products?q=pesto"):
-            try:
-                text = self._get(BASE_URL + path).text
-            except requests.RequestException:
-                continue
-            match = re.search(r'"buildId"\s*:\s*"([^"]+)"', text)
-            if match:
-                self.build_id = html.unescape(match.group(1))
-                return self.build_id
+        if force:
+            self.build_id = ""
+        for _attempt in range(5):
+            self.session = requests.Session(impersonate="chrome")
+            self.session.headers.update({"Accept": "application/json,text/html"})
+            for path in ("/", "/search/products?q=pesto",
+                         "/browse/pantry/sauces/pizza-pasta"):
+                try:
+                    text = self._get(
+                        BASE_URL + path,
+                        headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
+                    ).text
+                except requests.RequestsError:
+                    continue
+                match = re.search(r'"buildId"\s*:\s*"([^"]+)"', text)
+                if match:
+                    self.build_id = html.unescape(match.group(1))
+                    return self.build_id
+            time.sleep(2)
         raise ScrapeError(
             "Coles blocked build-ID discovery. Set the repository secret COLES_BUILD_ID "
             "to the current buildId from the Coles page source. No report was generated."
@@ -103,6 +115,8 @@ class ColesScraper:
             price = normalize(price)
         return product_id, {
             "retailer": "Coles", "name": name, "price": price, "size": size, "image_url": uri,
+            "online_only": bool(pricing.get("onlineSpecial")) or
+                           "ONLINE" in normalize(pricing.get("promotionType")).upper(),
             "product_url": product_url, "source": product_url,
         }
 
@@ -120,7 +134,16 @@ class ColesScraper:
             if page > 1:
                 params["page"] = page
             url = f"{BASE_URL}/_next/data/{quote(build_id, safe='')}/en/search/products.json?{urlencode(params)}"
-            response = self._get(url)
+            try:
+                response = self._get(url)
+            except requests.RequestsError as exc:
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                if status == 404:
+                    build_id = self.discover_build_id(force=True)
+                    url = f"{BASE_URL}/_next/data/{quote(build_id, safe='')}/en/search/products.json?{urlencode(params)}"
+                    response = self._get(url)
+                else:
+                    raise
             content_type = response.headers.get("content-type", "")
             if "json" not in content_type.lower():
                 raise ScrapeError("Coles returned a bot-protection page instead of product JSON. No report was generated.")
@@ -133,7 +156,8 @@ class ColesScraper:
                 product_id, product = self._product(raw)
                 if product_id and is_wanted_name(product["name"]):
                     found["coles:" + product_id] = product
-            total = metadata.get("totalResults") or metadata.get("total") or metadata.get("totalCount")
+            total = (metadata.get("totalResults") or metadata.get("noOfResults") or
+                     metadata.get("total") or metadata.get("totalCount"))
             if total is not None and page * self.page_size >= int(total):
                 break
             if len(results) < self.page_size:
