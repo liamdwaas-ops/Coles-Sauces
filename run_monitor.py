@@ -34,11 +34,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-email", action="store_true")
     parser.add_argument("--email-baseline", action="store_true")
+    parser.add_argument("--send-existing-baseline", action="store_true")
     parser.add_argument("--fixture", help="Use a local JSON product snapshot (tests only)")
     args = parser.parse_args()
     config = load_json(ROOT / "config.json", {})
     previous = load_json(DATA / "current.json", {})
     history = load_json(DATA / "events.json", [])
+    workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
+    if args.send_existing_baseline:
+        if not previous or not workbook_path.exists():
+            raise RuntimeError("An existing baseline snapshot and workbook are required")
+        password = os.environ.get("GMAIL_APP_PASSWORD", "")
+        if not password:
+            raise RuntimeError("GMAIL_APP_PASSWORD is required to email the baseline")
+        send_email(config["sender"], config["recipient"], password, [], workbook_path,
+                   baseline=previous)
+        print(json.dumps({"baseline_email_products": len(previous)}))
+        return
     if args.fixture:
         current = load_json(Path(args.fixture), {})
     else:
@@ -59,7 +71,6 @@ def main():
         previous, current, observed_at, (e["event_id"] for e in history)
     )
     updated_history = history + events
-    workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
     write_workbook(workbook_path, updated_history, current)
     save_json(DATA / "current.json", current)
     save_json(DATA / "events.json", updated_history)
