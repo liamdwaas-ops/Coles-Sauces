@@ -3,7 +3,12 @@
   "page_size": 48,
   "max_pages_per_query": 20,
   "request_delay_seconds": 1.0,
+  "location": {
+    "suburb": "Highett",
+    "postcode": "3190",
+    "state": "VIC",
+    "context_mode": "delivery"
+  },
   "sender": "liamdwaas@gmail.com",
   "recipient": "liam.dewaas@simplot.com"
 }
-

@@ -19,10 +19,11 @@ class ScrapeError(RuntimeError):
 
 
 class ColesScraper:
-    def __init__(self, delay=1.0, max_pages=20, page_size=48):
+    def __init__(self, delay=1.0, max_pages=20, page_size=48, location=None):
         self.delay = delay
         self.max_pages = max_pages
         self.page_size = page_size
+        self.location = location or {}
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/json,text/html"})
         self.build_id = os.getenv("COLES_BUILD_ID", "").strip()
@@ -110,6 +111,12 @@ class ColesScraper:
         found = {}
         for page in range(1, self.max_pages + 1):
             params = {"q": query}
+            if self.location.get("postcode"):
+                params["postcode"] = self.location["postcode"]
+            if self.location.get("state"):
+                params["state"] = self.location["state"]
+            if self.location.get("context_mode"):
+                params["contextMode"] = self.location["context_mode"]
             if page > 1:
                 params["page"] = page
             url = f"{BASE_URL}/_next/data/{quote(build_id, safe='')}/en/search/products.json?{urlencode(params)}"
@@ -146,4 +153,3 @@ class ColesScraper:
         if missing:
             raise ScrapeError(f"Coles returned incomplete records for {len(missing)} products. Snapshot was not replaced.")
         return products
-

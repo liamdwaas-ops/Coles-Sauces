@@ -2,6 +2,7 @@ import unittest
 
 from coles_monitor.changes import compare
 from coles_monitor.matcher import is_wanted_name, split_name_size
+from coles_monitor.scraper import ColesScraper
 
 
 class MatcherTests(unittest.TestCase):
@@ -15,6 +16,14 @@ class MatcherTests(unittest.TestCase):
 
     def test_name_size(self):
         self.assertEqual(split_name_size("Brand Pesto | 190g"), ("Brand Pesto", "190g"))
+
+
+class LocationTests(unittest.TestCase):
+    def test_highett_location_is_retained(self):
+        location = {"suburb": "Highett", "postcode": "3190", "state": "VIC",
+                    "context_mode": "delivery"}
+        scraper = ColesScraper(location=location)
+        self.assertEqual(scraper.location, location)
 
 
 class ChangeTests(unittest.TestCase):
@@ -31,4 +40,3 @@ class ChangeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

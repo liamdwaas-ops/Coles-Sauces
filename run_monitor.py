@@ -39,8 +39,10 @@ def main():
     if args.fixture:
         current = load_json(Path(args.fixture), {})
     else:
-        scraper = ColesScraper(config["request_delay_seconds"], config["max_pages_per_query"],
-                               config["page_size"])
+        scraper = ColesScraper(
+            config["request_delay_seconds"], config["max_pages_per_query"],
+            config["page_size"], config.get("location")
+        )
         current = scraper.scrape(config["queries"])
     observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     first_run = not previous
