@@ -45,6 +45,7 @@ jobs:
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           COLES_BUILD_ID: ${{ secrets.COLES_BUILD_ID }}
+          RETAIL_PROXY_URL: ${{ secrets.RETAIL_PROXY_URL }}
         run: python run_monitor.py ${{ github.event_name == 'push' && '--email-baseline' || '' }}
 
       - name: Commit updated snapshot and history

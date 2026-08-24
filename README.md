@@ -23,6 +23,7 @@ The workflow runs at `20:00 UTC Tuesday`, which is **06:00 AEST Wednesday**. Bec
 2. In **Settings → Secrets and variables → Actions**, add:
    - `GMAIL_APP_PASSWORD`: a Google App Password for `liamdwaas@gmail.com` (never use or commit the normal Google password).
    - `COLES_BUILD_ID`: optional fallback containing the current Coles Next.js `buildId`. The monitor first attempts automatic discovery. Add/update this only if a run says Coles blocked discovery.
+   - `RETAIL_PROXY_URL`: an Australian residential HTTPS proxy URL, including its provider-issued credentials. This is required on GitHub-hosted runners because Coles rejects GitHub datacenter IPs. Store it only as an Actions secret, for example in the provider's documented `http://user:password@host:port` format.
 3. In **Settings → Actions → General → Workflow permissions**, select **Read and write permissions** so the workflow can commit its history.
 4. Pushing the initial setup creates and emails the baseline. **Actions → Weekly Coles product monitor → Run workflow** remains available for diagnostics, but a manual run does not resend an existing baseline.
 
@@ -33,6 +34,7 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 - A run where either retailer is blocked, empty, malformed or incomplete fails without replacing the last good combined snapshot or sending a partial report.
 - Coles' flag comes from `pricing.onlineSpecial`/an online promotion label; Woolworths' flag comes from `IsOnlineOnly`. The monitor does not infer this status from price differences.
 - Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used.
+- When `RETAIL_PROXY_URL` is present, both retailers use the same Australian proxy so their Cheltenham-context data is fetched consistently. The secret is never logged or written to a snapshot.
 - Coles build-ID discovery is automatic. `config.json` also contains a last-known build ID verified from the live homepage on 2026-08-24, used only if homepage discovery is challenged; a stale ID makes the run fail safely rather than emit partial data.
 - Change events have deterministic IDs and are stored in `data/events.json`, preventing duplicate reports.
 - The complete audit history and current combined catalogue are kept in `data/coles-woolworths-sauce-change-history.xlsx` and uploaded as a workflow artifact.

@@ -1,4 +1,5 @@
 import time
+import os
 from urllib.parse import quote_plus
 
 from curl_cffi import requests
@@ -18,7 +19,11 @@ class WoolworthsScraper:
         self.max_pages = max_pages
         self.page_size = min(page_size, 36)
         self.location = location or {}
-        self.session = requests.Session(impersonate="chrome")
+        proxy_url = os.getenv("RETAIL_PROXY_URL", "").strip()
+        session_args = {"impersonate": "chrome"}
+        if proxy_url:
+            session_args["proxy"] = proxy_url
+        self.session = requests.Session(**session_args)
         self.primed = False
         self.session.headers.update({
             "Accept": "application/json",

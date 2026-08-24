@@ -25,10 +25,17 @@ class ColesScraper:
         self.max_pages = max_pages
         self.page_size = page_size
         self.location = location or {}
-        self.session = requests.Session(impersonate="chrome")
+        self.proxy_url = os.getenv("RETAIL_PROXY_URL", "").strip()
+        self.session = self._new_session()
         self.session.headers.update({"Accept": "application/json,text/html"})
         self.build_id = (os.getenv("COLES_BUILD_ID", "").strip() or
                          normalize(verified_build_id_fallback))
+
+    def _new_session(self):
+        kwargs = {"impersonate": "chrome"}
+        if self.proxy_url:
+            kwargs["proxy"] = self.proxy_url
+        return requests.Session(**kwargs)
 
     def _get(self, url, **kwargs):
         response = self.session.get(url, timeout=35, **kwargs)
@@ -41,7 +48,7 @@ class ColesScraper:
         if force:
             self.build_id = ""
         for _attempt in range(5):
-            self.session = requests.Session(impersonate="chrome")
+            self.session = self._new_session()
             self.session.headers.update({"Accept": "application/json,text/html"})
             for path in ("/", "/search/products?q=pesto",
                          "/browse/pantry/sauces/pizza-pasta"):
