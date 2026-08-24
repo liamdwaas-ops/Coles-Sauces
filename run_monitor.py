@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import sys
 
 from coles_monitor.changes import compare
 from coles_monitor.reporting import send_email, write_workbook
@@ -76,4 +77,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        message = str(exc).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=Monitor failure::{type(exc).__name__}: {message}", file=sys.stderr)
+        raise
