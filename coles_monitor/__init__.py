@@ -1,0 +1,2 @@
+"""Coles product change monitor."""
+

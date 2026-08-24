@@ -1,0 +1,5 @@
+{
+  "100": {"name": "Example Basil Pesto", "price": 3.5, "size": "190g", "image_url": "https://example.test/100-a.jpg", "product_url": "https://www.coles.com.au/product/example-100", "source": "https://www.coles.com.au/product/example-100"},
+  "200": {"name": "Example Tomato Pasta Sauce", "price": 4.0, "size": "500g", "image_url": "https://example.test/200.jpg", "product_url": "https://www.coles.com.au/product/example-200", "source": "https://www.coles.com.au/product/example-200"}
+}
+
