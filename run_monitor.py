@@ -15,6 +15,25 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 
 
+def scrape_with_fallback(scrapers, queries, previous):
+    """Scrape retailers independently, retaining last verified data on access failures."""
+    current = {}
+    failures = []
+    for retailer, scraper in scrapers:
+        try:
+            current.update(scraper.scrape(queries))
+        except Exception as exc:
+            retained = {product_id: product for product_id, product in previous.items()
+                        if product.get("retailer") == retailer}
+            if not retained:
+                raise
+            current.update(retained)
+            failures.append(f"{retailer}: {type(exc).__name__}: {exc}")
+    for failure in failures:
+        print(f"::warning title=Retailer snapshot retained::{failure}", file=sys.stderr)
+    return current, failures
+
+
 def load_json(path, default):
     if not path.exists():
         return default
@@ -65,8 +84,9 @@ def main():
             config["request_delay_seconds"], config["max_pages_per_query"],
             config["page_size"], config.get("location")
         )
-        current = coles.scrape(config["queries"])
-        current.update(woolworths.scrape(config["queries"]))
+        current, scrape_failures = scrape_with_fallback(
+            (("Coles", coles), ("Woolworths", woolworths)), config["queries"], previous
+        )
     observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     first_run = not previous
     display_current = visible_products(previous, current, first_run or args.reset_baseline)
@@ -77,7 +97,8 @@ def main():
     write_workbook(workbook_path, updated_history, display_current)
     save_json(DATA / "current.json", current)
     save_json(DATA / "events.json", updated_history)
-    print(json.dumps({"products": len(current), "changes": len(events), "baseline": first_run}))
+    print(json.dumps({"products": len(current), "changes": len(events), "baseline": first_run,
+                      "retailer_failures": scrape_failures if not args.fixture else []}))
     if args.no_email:
         return
     password = os.environ.get("GMAIL_APP_PASSWORD", "")

@@ -5,6 +5,7 @@ This repository checks Coles and Woolworths once a week for products whose **nam
 - contains both whole words `pasta` and `sauce` (in any order)
 - contains both whole words `tomato` and `paste` (in any order)
 - contains the whole word `passata`
+- contains the whole word `pesto`
 
 Products are excluded when the title contains the whole word `fresh`, when the brand is `Continental` or `Sirena`, or when the retailer reports them as out of stock.
 
@@ -37,6 +38,7 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 ## Data integrity behavior
 
 - A run where either retailer is blocked, empty, malformed or incomplete fails without replacing the last good combined snapshot or sending a partial report.
+- After a baseline exists, a temporarily blocked retailer retains its last verified records while the other retailer continues normally. The workflow emits a GitHub warning, never interprets the access failure as removals, and retries the retailer on the next scheduled run.
 - Coles' flag comes from `pricing.onlineSpecial`/an online promotion label; Woolworths' flag comes from `IsOnlineOnly`. The monitor does not infer this status from price differences.
 - Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used.
 - When `RETAIL_PROXY_URL` is present, both retailers use the same Australian proxy so their Cheltenham-context data is fetched consistently. The secret is never logged or written to a snapshot.

@@ -9,6 +9,7 @@ on:
       - "config.json"
       - "requirements.txt"
       - "run_monitor.py"
+      - "tests/**"
   schedule:
     # 06:00 AEST every Wednesday (fixed UTC+10; 07:00 local during AEDT).
     - cron: "0 20 * * 2"
@@ -42,13 +43,13 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Send requested baseline test email once
-        if: ${{ hashFiles('.send-baseline-once') != '' }}
+        if: ${{ github.event_name != 'push' && hashFiles('.send-baseline-once') != '' }}
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python run_monitor.py --send-existing-baseline
 
       - name: Retire one-time baseline email marker
-        if: ${{ hashFiles('.send-baseline-once') != '' }}
+        if: ${{ github.event_name != 'push' && hashFiles('.send-baseline-once') != '' }}
         run: |
           git config user.name "coles-monitor[bot]"
           git config user.email "coles-monitor[bot]@users.noreply.github.com"
@@ -57,13 +58,15 @@ jobs:
           git push
 
       - name: Scrape, compare, record and notify
+        if: ${{ github.event_name != 'push' }}
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           COLES_BUILD_ID: ${{ secrets.COLES_BUILD_ID }}
           RETAIL_PROXY_URL: ${{ secrets.RETAIL_PROXY_URL }}
-        run: python run_monitor.py ${{ github.event_name == 'push' && '--email-baseline' || '' }}
+        run: python run_monitor.py
 
       - name: Commit updated snapshot and history
+        if: ${{ github.event_name != 'push' }}
         run: |
           if git diff --quiet -- data; then
             echo "No state changes to commit."
@@ -76,6 +79,7 @@ jobs:
           git push
 
       - name: Upload Excel history
+        if: ${{ github.event_name != 'push' }}
         uses: actions/upload-artifact@v4
         with:
           name: coles-woolworths-sauce-change-history

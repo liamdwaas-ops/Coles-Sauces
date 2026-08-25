@@ -6,6 +6,7 @@ from coles_monitor.reporting import render_baseline_html, write_workbook
 from openpyxl import load_workbook
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from run_monitor import scrape_with_fallback
 from coles_monitor.scraper import ColesScraper
 from coles_monitor.woolworths import WoolworthsScraper
 
@@ -57,6 +58,29 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("<h2>Coles</h2>", html)
         self.assertIn("<h2>Woolworths</h2>", html)
         self.assertEqual(html.count(">Tomato Paste Passata</a>"), 1)
+
+
+class ScrapeFallbackTests(unittest.TestCase):
+    def test_failed_retailer_retains_verified_snapshot(self):
+        class FailedScraper:
+            def scrape(self, queries):
+                raise RuntimeError("blocked")
+
+        class WorkingScraper:
+            def scrape(self, queries):
+                return {"woolworths:2": {"retailer": "Woolworths", "name": "New Passata"}}
+
+        previous = {
+            "coles:1": {"retailer": "Coles", "name": "Verified Tomato Paste"},
+            "woolworths:1": {"retailer": "Woolworths", "name": "Old Passata"},
+        }
+        current, failures = scrape_with_fallback(
+            (("Coles", FailedScraper()), ("Woolworths", WorkingScraper())), [], previous
+        )
+        self.assertIn("coles:1", current)
+        self.assertNotIn("woolworths:1", current)
+        self.assertIn("woolworths:2", current)
+        self.assertEqual(len(failures), 1)
 
 
 class LocationTests(unittest.TestCase):
