@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import sys
 
-from coles_monitor.changes import compare
+from coles_monitor.changes import compare, visible_products
 from coles_monitor.reporting import send_email, write_workbook
 from coles_monitor.scraper import ColesScraper
 from coles_monitor.woolworths import WoolworthsScraper
@@ -35,6 +35,8 @@ def main():
     parser.add_argument("--no-email", action="store_true")
     parser.add_argument("--email-baseline", action="store_true")
     parser.add_argument("--send-existing-baseline", action="store_true")
+    parser.add_argument("--reset-baseline", action="store_true",
+                        help="Adopt the current catalogue without recording schema/filter changes")
     parser.add_argument("--fixture", help="Use a local JSON product snapshot (tests only)")
     args = parser.parse_args()
     config = load_json(ROOT / "config.json", {})
@@ -67,11 +69,12 @@ def main():
         current.update(woolworths.scrape(config["queries"]))
     observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     first_run = not previous
-    events = [] if first_run else compare(
+    display_current = visible_products(previous, current, first_run or args.reset_baseline)
+    events = [] if first_run or args.reset_baseline else compare(
         previous, current, observed_at, (e["event_id"] for e in history)
     )
     updated_history = history + events
-    write_workbook(workbook_path, updated_history, current)
+    write_workbook(workbook_path, updated_history, display_current)
     save_json(DATA / "current.json", current)
     save_json(DATA / "events.json", updated_history)
     print(json.dumps({"products": len(current), "changes": len(events), "baseline": first_run}))
@@ -84,7 +87,7 @@ def main():
     if not password:
         raise RuntimeError("GMAIL_APP_PASSWORD is required when changes need to be emailed")
     send_email(config["sender"], config["recipient"], password, events, workbook_path,
-               baseline=current if first_run else None)
+               baseline=display_current if first_run else None)
 
 
 if __name__ == "__main__":

@@ -9,8 +9,14 @@ def is_wanted_name(name):
     words = set(re.findall(r"[a-z]+", normalize(name).lower()))
     return (("pasta" in words and "sauce" in words)
             or ("tomato" in words and "paste" in words)
-            or "pesto" in words
             or "passata" in words)
+
+
+def is_allowed_product(name, brand=""):
+    words = set(re.findall(r"[a-z]+", normalize(name).lower()))
+    excluded_brands = {"continental", "sirena"}
+    return (is_wanted_name(name) and "fresh" not in words and
+            normalize(brand).lower() not in excluded_brands)
 
 
 def split_name_size(name, explicit_size=""):
@@ -23,4 +29,3 @@ def split_name_size(name, explicit_size=""):
     if match:
         return normalize(name[:match.start()]), normalize(match.group(1))
     return name, ""
-

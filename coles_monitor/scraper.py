@@ -7,7 +7,7 @@ from urllib.parse import quote, urlencode
 
 from curl_cffi import requests
 
-from .matcher import is_wanted_name, normalize, split_name_size
+from .matcher import is_allowed_product, normalize, split_name_size
 
 
 BASE_URL = "https://www.coles.com.au"
@@ -120,8 +120,32 @@ class ColesScraper:
             price = float(price) if price is not None else None
         except (TypeError, ValueError):
             price = normalize(price)
+        was = pricing.get("was")
+        try:
+            was = float(was) if was is not None else None
+        except (TypeError, ValueError):
+            was = None
+        promotion_type = normalize(pricing.get("promotionType")).upper()
+        is_promo = bool(was and isinstance(price, (int, float)) and was > price and
+                        (promotion_type in {"SPECIAL", "PERCENT_OFF"} or
+                         pricing.get("onlineSpecial")))
+        availability_type = normalize(raw.get("availabilityType"))
+        available = bool(raw.get("availability"))
+        status_text = availability_type.lower().replace("_", "").replace(" ", "")
+        if available:
+            availability_state = "in_stock"
+        elif "temporar" in status_text:
+            availability_state = "temporary_unavailable"
+        else:
+            availability_state = "out_of_stock"
         return product_id, {
-            "retailer": "Coles", "name": name, "price": price, "size": size, "image_url": uri,
+            "retailer": "Coles", "brand": normalize(raw.get("brand")), "name": name,
+            "price": price, "original_price": was if is_promo else None,
+            "promotional_price": price if is_promo else None,
+            "discount_percent": round((was - price) / was, 4) if is_promo else None,
+            "availability_state": availability_state,
+            "availability_label": availability_type or ("Available" if available else "Out of stock"),
+            "size": size, "image_url": uri,
             "online_only": bool(pricing.get("onlineSpecial")) or
                            "ONLINE" in normalize(pricing.get("promotionType")).upper(),
             "product_url": product_url, "source": product_url,
@@ -161,7 +185,7 @@ class ColesScraper:
                 if not isinstance(raw, dict):
                     continue
                 product_id, product = self._product(raw)
-                if product_id and is_wanted_name(product["name"]):
+                if product_id and is_allowed_product(product["name"], product["brand"]):
                     found["coles:" + product_id] = product
             total = (metadata.get("totalResults") or metadata.get("noOfResults") or
                      metadata.get("total") or metadata.get("totalCount"))

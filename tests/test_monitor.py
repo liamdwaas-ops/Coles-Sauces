@@ -1,7 +1,7 @@
 import unittest
 
-from coles_monitor.changes import compare
-from coles_monitor.matcher import is_wanted_name, split_name_size
+from coles_monitor.changes import compare, visible_products
+from coles_monitor.matcher import is_allowed_product, is_wanted_name, split_name_size
 from coles_monitor.scraper import ColesScraper
 from coles_monitor.woolworths import WoolworthsScraper
 
@@ -10,10 +10,16 @@ class MatcherTests(unittest.TestCase):
     def test_exact_rules(self):
         self.assertTrue(is_wanted_name("Brand Pasta Bake Sauce"))
         self.assertTrue(is_wanted_name("Brand Tomato Paste"))
-        self.assertTrue(is_wanted_name("Brand Pesto Genovese"))
         self.assertTrue(is_wanted_name("Brand Passata"))
+        self.assertFalse(is_wanted_name("Brand Pesto Genovese"))
         self.assertFalse(is_wanted_name("Tomato Sauce"))
         self.assertFalse(is_wanted_name("Pasta Penne"))
+
+    def test_title_and_brand_exclusions(self):
+        self.assertFalse(is_allowed_product("Fresh Tomato Pasta Sauce", "Example"))
+        self.assertFalse(is_allowed_product("Tomato Pasta Sauce", "Continental"))
+        self.assertFalse(is_allowed_product("Tomato Paste", "Sirena"))
+        self.assertTrue(is_allowed_product("Tomato Paste", "Leggo's"))
 
     def test_name_size(self):
         self.assertEqual(split_name_size("Brand Pesto | 190g"), ("Brand Pesto", "190g"))
@@ -54,6 +60,33 @@ class WoolworthsTests(unittest.TestCase):
         })
         self.assertTrue(product["online_only"])
 
+    def test_woolworths_promotion_fields_require_explicit_promo(self):
+        _, promo = WoolworthsScraper._product({
+            "Stockcode": 1, "Name": "Example Passata 700g", "PackageSize": "700g",
+            "Brand": "Example", "Price": 3.0, "WasPrice": 4.0, "IsOnSpecial": True,
+            "IsAvailable": True, "IsInStock": True
+        })
+        self.assertEqual(promo["original_price"], 4.0)
+        self.assertEqual(promo["promotional_price"], 3.0)
+        self.assertEqual(promo["discount_percent"], 0.25)
+        _, not_promo = WoolworthsScraper._product({
+            "Stockcode": 2, "Name": "Example Passata 700g", "PackageSize": "700g",
+            "Brand": "Example", "Price": 3.0, "WasPrice": 4.0, "IsOnSpecial": False
+        })
+        self.assertIsNone(not_promo["original_price"])
+
+    def test_woolworths_availability_mapping(self):
+        _, temporary = WoolworthsScraper._product({
+            "Stockcode": 3, "Name": "Example Passata 700g",
+            "IsAvailable": False, "IsInStock": False
+        })
+        self.assertEqual(temporary["availability_state"], "temporary_unavailable")
+        _, out = WoolworthsScraper._product({
+            "Stockcode": 4, "Name": "Example Passata 700g",
+            "IsAvailable": True, "IsInStock": False
+        })
+        self.assertEqual(out["availability_state"], "out_of_stock")
+
 
 class OnlineOnlyChangeTests(unittest.TestCase):
     def test_status_change_is_reported(self):
@@ -66,6 +99,29 @@ class OnlineOnlyChangeTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["change_type"], "Online Only status changed")
         self.assertTrue(events[0]["online_only"])
+
+
+class AvailabilityLifecycleTests(unittest.TestCase):
+    def test_temporary_unavailable_once_then_back_in_stock(self):
+        temporary = {"1": {"retailer": "Woolworths", "name": "A Passata",
+                            "availability_state": "temporary_unavailable",
+                            "availability_label": "Temporarily unavailable",
+                            "product_url": "u"}}
+        first = compare({}, temporary, "now")
+        self.assertEqual(first[0]["change_type"], "Temporarily unavailable")
+        self.assertEqual(compare(temporary, temporary, "later"), [])
+        self.assertEqual(visible_products({}, temporary), temporary)
+        self.assertEqual(visible_products(temporary, temporary), {})
+        available = {"1": {**temporary["1"], "availability_state": "in_stock",
+                           "availability_label": "Available"}}
+        back = compare(temporary, available, "later")
+        self.assertEqual(back[0]["change_type"], "Back in stock")
+        self.assertEqual(visible_products(temporary, available), available)
+
+    def test_out_of_stock_is_hidden(self):
+        out = {"1": {"name": "A Passata", "availability_state": "out_of_stock"}}
+        self.assertEqual(compare({}, out, "now"), [])
+        self.assertEqual(visible_products({}, out), {})
 
 
 class ChangeTests(unittest.TestCase):

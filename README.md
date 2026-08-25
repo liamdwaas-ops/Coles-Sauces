@@ -4,10 +4,15 @@ This repository checks Coles and Woolworths once a week for products whose **nam
 
 - contains both whole words `pasta` and `sauce` (in any order)
 - contains both whole words `tomato` and `paste` (in any order)
-- contains the whole word `pesto`
 - contains the whole word `passata`
 
+Products are excluded when the title contains the whole word `fresh`, when the brand is `Continental` or `Sirena`, or when the retailer reports them as out of stock.
+
 It records product-name, current-price, pack-size, primary-image and **Online Only** status changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour. Online-only prices remain in the report and are visibly flagged.
+
+Current price, original price, promotional price and percentage discount have separate columns. Original/promotional/discount fields are populated only when the retailer explicitly identifies a promotion and the original price is greater than the promotional price.
+
+`Temporarily unavailable` products are shown once when they first enter that state, suppressed on subsequent runs, and shown again as `Back in stock` after availability returns. Other out-of-stock products are excluded.
 
 Pricing requests for both retailers are fixed to the online delivery context for **Cheltenham VIC 3192**, configured in `config.json`.
 

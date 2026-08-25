@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 from curl_cffi import requests
 from curl_cffi.const import CurlHttpVersion
 
-from .matcher import is_wanted_name, normalize, split_name_size
+from .matcher import is_allowed_product, normalize, split_name_size
 from .scraper import ScrapeError, USER_AGENT
 
 
@@ -76,8 +76,33 @@ class WoolworthsScraper:
             price = float(price) if price is not None else None
         except (TypeError, ValueError):
             price = normalize(price)
+        was = raw.get("WasPrice")
+        try:
+            was = float(was) if was is not None else None
+        except (TypeError, ValueError):
+            was = None
+        is_promo = bool(was and isinstance(price, (int, float)) and was > price and
+                        (raw.get("IsOnSpecial") or raw.get("IsOnlineOnly")))
+        is_available = bool(raw.get("IsAvailable", True))
+        is_in_stock = bool(raw.get("IsInStock", is_available))
+        explicit_temporary = bool(raw.get("IsTemporarilyUnavailable"))
+        if is_available and is_in_stock:
+            availability_state = "in_stock"
+            availability_label = "Available"
+        elif explicit_temporary or (not is_available and not is_in_stock):
+            availability_state = "temporary_unavailable"
+            availability_label = "Temporarily unavailable"
+        else:
+            availability_state = "out_of_stock"
+            availability_label = "Out of stock"
         return "woolworths:" + product_id, {
-            "retailer": "Woolworths", "name": name, "price": price, "size": size,
+            "retailer": "Woolworths", "brand": normalize(raw.get("Brand")),
+            "name": name, "price": price,
+            "original_price": was if is_promo else None,
+            "promotional_price": price if is_promo else None,
+            "discount_percent": round((was - price) / was, 4) if is_promo else None,
+            "availability_state": availability_state, "availability_label": availability_label,
+            "size": size,
             "online_only": bool(raw.get("IsOnlineOnly")),
             "image_url": image, "product_url": product_url, "source": product_url,
         }
@@ -123,7 +148,8 @@ class WoolworthsScraper:
                 break
             for raw in products:
                 product_id, product = self._product(raw)
-                if product_id != "woolworths:" and is_wanted_name(product["name"]):
+                if (product_id != "woolworths:" and
+                        is_allowed_product(product["name"], product["brand"])):
                     found[product_id] = product
             if len(products) < self.page_size:
                 break
