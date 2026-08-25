@@ -18,6 +18,8 @@ def keyword_group(name):
         return "Pasta Sauce"
     if "passata" in words:
         return "Passata"
+    if "pesto" in words:
+        return "Pesto"
     return None
 
 

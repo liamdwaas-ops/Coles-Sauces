@@ -15,7 +15,7 @@ class MatcherTests(unittest.TestCase):
         self.assertTrue(is_wanted_name("Brand Pasta Bake Sauce"))
         self.assertTrue(is_wanted_name("Brand Tomato Paste"))
         self.assertTrue(is_wanted_name("Brand Passata"))
-        self.assertFalse(is_wanted_name("Brand Pesto Genovese"))
+        self.assertTrue(is_wanted_name("Brand Pesto Genovese"))
         self.assertFalse(is_wanted_name("Tomato Sauce"))
         self.assertFalse(is_wanted_name("Pasta Penne"))
 
@@ -31,6 +31,7 @@ class MatcherTests(unittest.TestCase):
     def test_exclusive_keyword_group_priority(self):
         self.assertEqual(keyword_group("Tomato Paste Passata"), "Tomato Paste")
         self.assertEqual(keyword_group("Passata Pasta Sauce"), "Pasta Sauce")
+        self.assertEqual(keyword_group("Basil Pesto"), "Pesto")
         self.assertIsNone(keyword_group("Tomato Sauce"))
 
 

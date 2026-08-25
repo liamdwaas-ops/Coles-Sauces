@@ -16,7 +16,7 @@ HEADERS = ["Observed (UTC)", "Retailer", "Brand", "Change", "Product", "Before",
            "Discount", "Online Only", "Availability", "Size", "Image URL", "Product URL",
            "Event ID"]
 RETAILERS = ("Coles", "Woolworths")
-GROUPS = ("Tomato Paste", "Pasta Sauce", "Passata")
+GROUPS = ("Tomato Paste", "Pasta Sauce", "Passata", "Pesto")
 PRODUCT_HEADERS = ["Product ID", "Brand", "Product", "Current Price (AUD)",
                    "Original Price (AUD)", "Promotional Price (AUD)", "Discount",
                    "Online Only", "Availability", "Size", "Image URL", "Product URL"]
