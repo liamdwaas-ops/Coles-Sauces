@@ -42,6 +42,21 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
+      - name: Resend latest captured update once
+        if: ${{ hashFiles('.send-latest-once') != '' }}
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python run_monitor.py --send-latest-events
+
+      - name: Retire latest-update resend marker
+        if: ${{ hashFiles('.send-latest-once') != '' }}
+        run: |
+          git config user.name "coles-monitor[bot]"
+          git config user.email "coles-monitor[bot]@users.noreply.github.com"
+          git rm .send-latest-once
+          git commit -m "Mark latest update resend as sent"
+          git push
+
       - name: Send requested baseline test email once
         if: ${{ github.event_name != 'push' && hashFiles('.send-baseline-once') != '' }}
         env:

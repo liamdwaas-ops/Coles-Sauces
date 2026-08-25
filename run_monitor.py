@@ -54,6 +54,7 @@ def main():
     parser.add_argument("--no-email", action="store_true")
     parser.add_argument("--email-baseline", action="store_true")
     parser.add_argument("--send-existing-baseline", action="store_true")
+    parser.add_argument("--send-latest-events", action="store_true")
     parser.add_argument("--reset-baseline", action="store_true",
                         help="Adopt the current catalogue without recording schema/filter changes")
     parser.add_argument("--fixture", help="Use a local JSON product snapshot (tests only)")
@@ -62,6 +63,20 @@ def main():
     previous = load_json(DATA / "current.json", {})
     history = load_json(DATA / "events.json", [])
     workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
+    if args.send_latest_events:
+        if not history or not workbook_path.exists():
+            raise RuntimeError("Existing change history and workbook are required")
+        latest_observed_at = max(event["observed_at"] for event in history)
+        latest_events = [event for event in history
+                         if event["observed_at"] == latest_observed_at]
+        password = os.environ.get("GMAIL_APP_PASSWORD", "")
+        if not password:
+            raise RuntimeError("GMAIL_APP_PASSWORD is required to resend the latest update")
+        send_email(config["sender"], config["recipient"], password, latest_events,
+                   workbook_path)
+        print(json.dumps({"resent_events": len(latest_events),
+                          "observed_at": latest_observed_at}))
+        return
     if args.send_existing_baseline:
         if not previous or not workbook_path.exists():
             raise RuntimeError("An existing baseline snapshot and workbook are required")
