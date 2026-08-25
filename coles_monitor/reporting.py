@@ -5,13 +5,21 @@ import smtplib
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
+
+from .matcher import keyword_group
 
 
 HEADERS = ["Observed (UTC)", "Retailer", "Brand", "Change", "Product", "Before", "After",
            "Current Price (AUD)", "Original Price (AUD)", "Promotional Price (AUD)",
            "Discount", "Online Only", "Availability", "Size", "Image URL", "Product URL",
            "Event ID"]
+RETAILERS = ("Coles", "Woolworths")
+GROUPS = ("Tomato Paste", "Pasta Sauce", "Passata")
+PRODUCT_HEADERS = ["Product ID", "Brand", "Product", "Current Price (AUD)",
+                   "Original Price (AUD)", "Promotional Price (AUD)", "Discount",
+                   "Online Only", "Availability", "Size", "Image URL", "Product URL"]
 
 
 def _style_sheet(ws, widths):
@@ -24,6 +32,66 @@ def _style_sheet(ws, widths):
         ws.column_dimensions[get_column_letter(index)].width = width
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
+    ws.sheet_view.showGridLines = False
+
+
+def _write_retailer_sheet(wb, retailer, current):
+    ws = wb.create_sheet(retailer, len(wb.sheetnames) - 1)
+    last_column = get_column_letter(len(PRODUCT_HEADERS))
+    ws.merge_cells(f"A1:{last_column}1")
+    ws["A1"] = retailer
+    ws["A1"].fill = PatternFill("solid", fgColor="C41230")
+    ws["A1"].font = Font(color="FFFFFF", bold=True, size=16)
+    ws["A1"].alignment = Alignment(horizontal="center")
+    row = 3
+    retailer_products = [(product_id, product) for product_id, product in current.items()
+                         if product.get("retailer") == retailer]
+    for group_index, group in enumerate(GROUPS, 1):
+        ws.merge_cells(start_row=row, start_column=1, end_row=row,
+                       end_column=len(PRODUCT_HEADERS))
+        ws.cell(row, 1, group)
+        ws.cell(row, 1).fill = PatternFill("solid", fgColor="E7E6E6")
+        ws.cell(row, 1).font = Font(bold=True, size=12)
+        row += 1
+        header_row = row
+        ws.append(PRODUCT_HEADERS)
+        for cell in ws[header_row]:
+            cell.fill = PatternFill("solid", fgColor="7F6000")
+            cell.font = Font(color="FFFFFF", bold=True)
+        matches = sorted(((product_id, product) for product_id, product in retailer_products
+                          if keyword_group(product["name"]) == group),
+                         key=lambda item: item[1]["name"].lower())
+        for product_id, product in matches:
+            ws.append([product_id, product.get("brand", ""), product["name"], product["price"],
+                       product.get("original_price"), product.get("promotional_price"),
+                       product.get("discount_percent"),
+                       "Yes" if product.get("online_only") else "No",
+                       product.get("availability_label", ""), product["size"],
+                       product["image_url"], product["product_url"]])
+            data_row = ws.max_row
+            ws.cell(data_row, 3).hyperlink = product["product_url"]
+            ws.cell(data_row, 3).style = "Hyperlink"
+            if product["image_url"]:
+                ws.cell(data_row, 11).hyperlink = product["image_url"]
+                ws.cell(data_row, 11).style = "Hyperlink"
+            for column in (4, 5, 6):
+                ws.cell(data_row, column).number_format = '"$"0.00'
+            ws.cell(data_row, 7).number_format = "0.0%"
+        if matches:
+            table_name = f'{retailer}{group.replace(" ", "")}Table'
+            table = Table(displayName=table_name,
+                          ref=f"A{header_row}:{last_column}{ws.max_row}")
+            table.tableStyleInfo = TableStyleInfo(name=f"TableStyleMedium{group_index + 1}",
+                                                  showRowStripes=True)
+            ws.add_table(table)
+        else:
+            row += 1
+            ws.cell(row, 1, "No matching SKUs")
+            ws.cell(row, 1).font = Font(italic=True, color="666666")
+        row = ws.max_row + 2
+    for index, width in enumerate([18, 18, 50, 16, 16, 18, 12, 13, 22, 14, 52, 52], 1):
+        ws.column_dimensions[get_column_letter(index)].width = width
+    ws.freeze_panes = "A5"
     ws.sheet_view.showGridLines = False
 
 
@@ -52,78 +120,81 @@ def write_workbook(path, events, current=None):
     for cell in ws["K"][1:]:
         cell.number_format = "0.0%"
     if current is not None:
-        products = wb.create_sheet("Current Products", 0)
-        products.append(["Product ID", "Retailer", "Brand", "Product", "Current Price (AUD)",
-                         "Original Price (AUD)", "Promotional Price (AUD)", "Discount",
-                         "Online Only", "Availability", "Size", "Image URL", "Product URL"])
-        for product_id, product in sorted(current.items(), key=lambda item: (item[1].get("retailer", ""), item[1]["name"].lower())):
-            products.append([product_id, product.get("retailer", ""), product.get("brand", ""),
-                             product["name"], product["price"], product.get("original_price"),
-                             product.get("promotional_price"), product.get("discount_percent"),
-                             "Yes" if product.get("online_only") else "No",
-                             product.get("availability_label", ""), product["size"],
-                             product["image_url"], product["product_url"]])
-            row = products.max_row
-            products.cell(row, 4).hyperlink = product["product_url"]
-            products.cell(row, 4).style = "Hyperlink"
-            if product["image_url"]:
-                products.cell(row, 12).hyperlink = product["image_url"]
-                products.cell(row, 12).style = "Hyperlink"
-            for column in (5, 6, 7):
-                products.cell(row, column).number_format = '"$"0.00'
-            products.cell(row, 8).number_format = "0.0%"
-        _style_sheet(products, [18, 14, 18, 50, 16, 16, 18, 12, 13, 22, 14, 52, 52])
+        for retailer in RETAILERS:
+            _write_retailer_sheet(wb, retailer, current)
     wb.save(path)
 
 
+def _sectioned_html(items, row_renderer):
+    sections = []
+    for retailer in RETAILERS:
+        sections.append(f"<h2>{retailer}</h2>")
+        retailer_items = [item for item in items if item.get("retailer") == retailer]
+        for group in GROUPS:
+            grouped = sorted((item for item in retailer_items
+                              if keyword_group(item["name"]) == group),
+                             key=lambda item: item["name"].lower())
+            sections.append(f"<h3>{group}</h3>")
+            sections.append(row_renderer(grouped))
+    return "".join(sections)
+
+
 def render_html(events):
-    rows = []
-    for e in events:
-        name = f'<a href="{escape(e["product_url"], quote=True)}">{escape(e["name"])}</a>'
-        image = (f'<a href="{escape(e["image_url"], quote=True)}">View image</a>'
-                 if e["image_url"] else "")
-        price = "" if e["price"] is None else f'${float(e["price"]):.2f}'
-        original = "" if e.get("original_price") is None else f'${float(e["original_price"]):.2f}'
-        promotional = "" if e.get("promotional_price") is None else f'${float(e["promotional_price"]):.2f}'
-        discount = "" if e.get("discount_percent") is None else f'{float(e["discount_percent"]):.1%}'
-        rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
-                    [escape(e.get("retailer", "")), escape(e.get("brand", "")),
-                     escape(e["change_type"]), name, escape(str(e["before"] or "")),
-                     escape(str(e["after"] or "")), price, original, promotional, discount,
-                     "Yes" if e.get("online_only") else "No",
-                     escape(e.get("availability_label", "")), escape(e["size"]), image]) + "</tr>")
-    return """<!doctype html><html><body><p>Changes detected since the previous successful weekly run:</p>
-<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
-<th>Retailer</th><th>Brand</th><th>Change</th><th>Product</th><th>Before</th><th>After</th>
-<th>Current Price</th><th>Original Price</th><th>Promotional Price</th><th>Discount</th>
-<th>Online Only</th><th>Availability</th><th>Size</th><th>Image</th>
-</tr></thead><tbody>""" + "".join(rows) + "</tbody></table><p>Source: Coles product pages linked above.</p></body></html>"
+    def render_table(grouped):
+        if not grouped:
+            return "<p>No changes.</p>"
+        rows = []
+        for e in grouped:
+            name = f'<a href="{escape(e["product_url"], quote=True)}">{escape(e["name"])}</a>'
+            image = (f'<a href="{escape(e["image_url"], quote=True)}">View image</a>'
+                     if e["image_url"] else "")
+            price = "" if e["price"] is None else f'${float(e["price"]):.2f}'
+            original = "" if e.get("original_price") is None else f'${float(e["original_price"]):.2f}'
+            promotional = "" if e.get("promotional_price") is None else f'${float(e["promotional_price"]):.2f}'
+            discount = "" if e.get("discount_percent") is None else f'{float(e["discount_percent"]):.1%}'
+            rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
+                        [escape(e.get("brand", "")), escape(e["change_type"]), name,
+                         escape(str(e["before"] or "")), escape(str(e["after"] or "")),
+                         price, original, promotional, discount,
+                         "Yes" if e.get("online_only") else "No",
+                         escape(e.get("availability_label", "")), escape(e["size"]), image]) + "</tr>")
+        return """<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
+<th>Brand</th><th>Change</th><th>Product</th><th>Before</th><th>After</th><th>Current Price</th>
+<th>Original Price</th><th>Promotional Price</th><th>Discount</th><th>Online Only</th>
+<th>Availability</th><th>Size</th><th>Image</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
+    return ("<!doctype html><html><body><p>Changes detected since the previous successful weekly run:</p>" +
+            _sectioned_html(events, render_table) +
+            "<p>Sources: Coles and Woolworths product pages linked above.</p></body></html>")
 
 
 def render_baseline_html(current):
-    rows = []
-    for product in sorted(current.values(), key=lambda item: item["name"].lower()):
-        name = f'<a href="{escape(product["product_url"], quote=True)}">{escape(product["name"])}</a>'
-        image = (f'<a href="{escape(product["image_url"], quote=True)}">View image</a>'
-                 if product["image_url"] else "")
-        price = "" if product["price"] is None else f'${float(product["price"]):.2f}'
-        original = ("" if product.get("original_price") is None else
-                    f'${float(product["original_price"]):.2f}')
-        promotional = ("" if product.get("promotional_price") is None else
-                       f'${float(product["promotional_price"]):.2f}')
-        discount = ("" if product.get("discount_percent") is None else
-                    f'{float(product["discount_percent"]):.1%}')
-        rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
-                    [escape(product.get("retailer", "")), escape(product.get("brand", "")),
-                     name, price, original, promotional, discount,
-                     "Yes" if product.get("online_only") else "No",
-                     escape(product.get("availability_label", "")), escape(product["size"]), image]) + "</tr>")
+    def render_table(grouped):
+        if not grouped:
+            return "<p>No matching SKUs.</p>"
+        rows = []
+        for product in grouped:
+            name = f'<a href="{escape(product["product_url"], quote=True)}">{escape(product["name"])}</a>'
+            image = (f'<a href="{escape(product["image_url"], quote=True)}">View image</a>'
+                     if product["image_url"] else "")
+            price = "" if product["price"] is None else f'${float(product["price"]):.2f}'
+            original = ("" if product.get("original_price") is None else
+                        f'${float(product["original_price"]):.2f}')
+            promotional = ("" if product.get("promotional_price") is None else
+                           f'${float(product["promotional_price"]):.2f}')
+            discount = ("" if product.get("discount_percent") is None else
+                        f'{float(product["discount_percent"]):.1%}')
+            rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
+                        [escape(product.get("brand", "")), name, price, original, promotional,
+                         discount, "Yes" if product.get("online_only") else "No",
+                         escape(product.get("availability_label", "")),
+                         escape(product["size"]), image]) + "</tr>")
+        return """<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
+<th>Brand</th><th>Product</th><th>Current Price</th><th>Original Price</th>
+<th>Promotional Price</th><th>Discount</th><th>Online Only</th><th>Availability</th>
+<th>Size</th><th>Image</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
     return """<!doctype html><html><body><p>Initial Coles and Woolworths product baseline for Cheltenham VIC 3192:</p>
-<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
-<th>Retailer</th><th>Brand</th><th>Product</th><th>Current Price</th><th>Original Price</th>
-<th>Promotional Price</th><th>Discount</th><th>Online Only</th><th>Availability</th><th>Size</th><th>Image</th>
-</tr></thead><tbody>""" + \
-        "".join(rows) + "</tbody></table><p>Future emails will contain only new changes.</p></body></html>"
+""" + _sectioned_html(list(current.values()), render_table) + \
+        "<p>Future emails will contain only new changes.</p></body></html>"
 
 
 def send_email(sender, recipient, app_password, events, workbook_path, baseline=None):

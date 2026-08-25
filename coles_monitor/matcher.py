@@ -6,10 +6,19 @@ def normalize(value):
 
 
 def is_wanted_name(name):
+    return keyword_group(name) is not None
+
+
+def keyword_group(name):
+    """Return one exclusive report group, ordered from most specific to broadest."""
     words = set(re.findall(r"[a-z]+", normalize(name).lower()))
-    return (("pasta" in words and "sauce" in words)
-            or ("tomato" in words and "paste" in words)
-            or "passata" in words)
+    if "tomato" in words and "paste" in words:
+        return "Tomato Paste"
+    if "pasta" in words and "sauce" in words:
+        return "Pasta Sauce"
+    if "passata" in words:
+        return "Passata"
+    return None
 
 
 def is_allowed_product(name, brand=""):

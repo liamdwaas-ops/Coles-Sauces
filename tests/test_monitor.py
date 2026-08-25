@@ -1,7 +1,11 @@
 import unittest
 
 from coles_monitor.changes import compare, visible_products
-from coles_monitor.matcher import is_allowed_product, is_wanted_name, split_name_size
+from coles_monitor.matcher import is_allowed_product, is_wanted_name, keyword_group, split_name_size
+from coles_monitor.reporting import render_baseline_html, write_workbook
+from openpyxl import load_workbook
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from coles_monitor.scraper import ColesScraper
 from coles_monitor.woolworths import WoolworthsScraper
 
@@ -23,6 +27,35 @@ class MatcherTests(unittest.TestCase):
 
     def test_name_size(self):
         self.assertEqual(split_name_size("Brand Pesto | 190g"), ("Brand Pesto", "190g"))
+
+    def test_exclusive_keyword_group_priority(self):
+        self.assertEqual(keyword_group("Tomato Paste Passata"), "Tomato Paste")
+        self.assertEqual(keyword_group("Passata Pasta Sauce"), "Pasta Sauce")
+        self.assertIsNone(keyword_group("Tomato Sauce"))
+
+
+class ReportingTests(unittest.TestCase):
+    def test_retailer_and_keyword_sections_do_not_duplicate_skus(self):
+        current = {
+            "coles:1": {"retailer": "Coles", "brand": "A", "name": "Tomato Paste Passata",
+                        "price": 2.0, "size": "100g", "image_url": "", "product_url": "https://example/1"},
+            "woolworths:2": {"retailer": "Woolworths", "brand": "B", "name": "Pasta Sauce",
+                             "price": 3.0, "size": "500g", "image_url": "", "product_url": "https://example/2"},
+        }
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "report.xlsx"
+            write_workbook(path, [], current)
+            workbook = load_workbook(path)
+            self.assertEqual(workbook.sheetnames, ["Coles", "Woolworths", "Change History"])
+            ids = []
+            for sheet_name in ("Coles", "Woolworths"):
+                ids.extend(cell.value for cell in workbook[sheet_name]["A"]
+                           if isinstance(cell.value, str) and ":" in cell.value)
+            self.assertCountEqual(ids, current.keys())
+        html = render_baseline_html(current)
+        self.assertIn("<h2>Coles</h2>", html)
+        self.assertIn("<h2>Woolworths</h2>", html)
+        self.assertEqual(html.count(">Tomato Paste Passata</a>"), 1)
 
 
 class LocationTests(unittest.TestCase):
