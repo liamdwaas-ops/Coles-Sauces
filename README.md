@@ -7,9 +7,11 @@ This repository checks Coles and Woolworths once a week for products whose **nam
 - contains the whole word `passata`
 - contains the whole word `pesto`
 
-Products are excluded when the title contains the whole word `fresh`, when the brand is `Continental` or `Sirena`, or when the retailer reports them as out of stock.
+Products are excluded when the title contains the whole word `fresh`, when they match the configured ignored-brand list, when their titles identify cooking utensils or decorative furniture, or when the retailer reports them as out of stock.
 
 It records product-name, current-price, pack-size, primary-image and **Online Only** status changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour. Online-only prices remain in the report and are visibly flagged.
+
+Each weekly report contains one row per changed SKU. When several fields change together, their labels are combined in the single `Change` cell. Before, after and image columns are intentionally omitted; product names remain linked to the retailer source page.
 
 Current price, original price, promotional price and percentage discount have separate columns. Original/promotional/discount fields are populated only when the retailer explicitly identifies a promotion and the original price is greater than the promotional price.
 

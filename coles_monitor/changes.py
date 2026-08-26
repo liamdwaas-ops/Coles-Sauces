@@ -6,7 +6,7 @@ FIELDS = ("name", "price", "original_price", "promotional_price",
           "discount_percent", "size", "image_url", "online_only")
 
 
-def stable_event_id(product_id, change_type, before, after):
+def stable_event_id(product_id, change_type, before, after=None):
     raw = json.dumps([str(product_id), change_type, before, after], ensure_ascii=False,
                      sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
@@ -43,18 +43,17 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                     }
                     label = labels.get(field, field.replace("_url", "").title())
                     candidates.append((label + " changed", before, after))
-        for change_type, before, after in candidates:
-            event_id = stable_event_id(product_id, change_type, before, after)
-            if event_id in seen:
-                continue
-            events.append({
+        if candidates:
+            change_type = "; ".join(candidate[0] for candidate in candidates)
+            changes = [(candidate[0], candidate[1], candidate[2]) for candidate in candidates]
+            event_id = stable_event_id(product_id, change_type, changes)
+            if event_id not in seen:
+                events.append({
                 "event_id": event_id,
                 "observed_at": observed_at,
                 "product_id": product_id,
                 "retailer": product.get("retailer", ""),
                 "change_type": change_type,
-                "before": before,
-                "after": after,
                 "name": product.get("name", ""),
                 "brand": product.get("brand", ""),
                 "price": product.get("price"),
@@ -66,8 +65,43 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                 "image_url": product.get("image_url", ""),
                 "online_only": bool(product.get("online_only")),
                 "product_url": product.get("product_url", ""),
-            })
+                })
     return events
+
+
+def consolidate_events(events):
+    """Collapse legacy per-field events to one report row per SKU and observation."""
+    grouped = {}
+    order = []
+    for event in events:
+        key = (event.get("observed_at", ""), event.get("product_id", ""))
+        if key not in grouped:
+            grouped[key] = dict(event)
+            grouped[key]["_types"] = []
+            grouped[key]["_ids"] = []
+            order.append(key)
+        target = grouped[key]
+        if event.get("event_id") and event["event_id"] not in target["_ids"]:
+            target["_ids"].append(event["event_id"])
+        for change_type in str(event.get("change_type", "")).split("; "):
+            if change_type and change_type not in target["_types"]:
+                target["_types"].append(change_type)
+        for field, value in event.items():
+            if value not in (None, ""):
+                target[field] = value
+    consolidated = []
+    for key in order:
+        event = grouped[key]
+        event["change_type"] = "; ".join(event.pop("_types"))
+        source_ids = event.pop("_ids")
+        event.pop("before", None)
+        event.pop("after", None)
+        if len(source_ids) != 1:
+            event["event_id"] = stable_event_id(
+                event.get("product_id", ""), event["change_type"], sorted(source_ids)
+            )
+        consolidated.append(event)
+    return consolidated
 
 
 def visible_products(previous, current, first_run=False):

@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 import sys
 
-from coles_monitor.changes import compare, visible_products
+from coles_monitor.changes import compare, consolidate_events, visible_products
+from coles_monitor.matcher import is_allowed_product
 from coles_monitor.reporting import send_email, write_workbook
 from coles_monitor.scraper import ColesScraper
 from coles_monitor.woolworths import WoolworthsScraper
@@ -60,8 +61,10 @@ def main():
     parser.add_argument("--fixture", help="Use a local JSON product snapshot (tests only)")
     args = parser.parse_args()
     config = load_json(ROOT / "config.json", {})
-    previous = load_json(DATA / "current.json", {})
-    history = load_json(DATA / "events.json", [])
+    previous = {product_id: product for product_id, product in
+                load_json(DATA / "current.json", {}).items()
+                if is_allowed_product(product.get("name", ""), product.get("brand", ""))}
+    history = consolidate_events(load_json(DATA / "events.json", []))
     workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
     if args.send_latest_events:
         if not history or not workbook_path.exists():
@@ -102,6 +105,8 @@ def main():
         current, scrape_failures = scrape_with_fallback(
             (("Coles", coles), ("Woolworths", woolworths)), config["queries"], previous
         )
+    current = {product_id: product for product_id, product in current.items()
+               if is_allowed_product(product.get("name", ""), product.get("brand", ""))}
     observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     first_run = not previous
     display_current = visible_products(previous, current, first_run or args.reset_baseline)

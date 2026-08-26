@@ -11,15 +11,14 @@ from openpyxl.utils import get_column_letter
 from .matcher import keyword_group
 
 
-HEADERS = ["Observed (UTC)", "Retailer", "Brand", "Change", "Product", "Before", "After",
+HEADERS = ["Observed (UTC)", "Retailer", "Brand", "Change", "Product",
            "Current Price (AUD)", "Original Price (AUD)", "Promotional Price (AUD)",
-           "Discount", "Online Only", "Availability", "Size", "Image URL", "Product URL",
-           "Event ID"]
+           "Discount", "Online Only", "Availability", "Size", "Product URL", "Event ID"]
 RETAILERS = ("Coles", "Woolworths")
 GROUPS = ("Tomato Paste", "Pasta Sauce", "Passata", "Pesto")
 PRODUCT_HEADERS = ["Product ID", "Brand", "Product", "Current Price (AUD)",
                    "Original Price (AUD)", "Promotional Price (AUD)", "Discount",
-                   "Online Only", "Availability", "Size", "Image URL", "Product URL"]
+                   "Online Only", "Availability", "Size", "Product URL"]
 
 
 def _style_sheet(ws, widths):
@@ -67,13 +66,10 @@ def _write_retailer_sheet(wb, retailer, current):
                        product.get("discount_percent"),
                        "Yes" if product.get("online_only") else "No",
                        product.get("availability_label", ""), product["size"],
-                       product["image_url"], product["product_url"]])
+                       product["product_url"]])
             data_row = ws.max_row
             ws.cell(data_row, 3).hyperlink = product["product_url"]
             ws.cell(data_row, 3).style = "Hyperlink"
-            if product["image_url"]:
-                ws.cell(data_row, 11).hyperlink = product["image_url"]
-                ws.cell(data_row, 11).style = "Hyperlink"
             for column in (4, 5, 6):
                 ws.cell(data_row, column).number_format = '"$"0.00'
             ws.cell(data_row, 7).number_format = "0.0%"
@@ -89,7 +85,7 @@ def _write_retailer_sheet(wb, retailer, current):
             ws.cell(row, 1, "No matching SKUs")
             ws.cell(row, 1).font = Font(italic=True, color="666666")
         row = ws.max_row + 2
-    for index, width in enumerate([18, 18, 50, 16, 16, 18, 12, 13, 22, 14, 52, 52], 1):
+    for index, width in enumerate([18, 18, 50, 16, 16, 18, 12, 13, 22, 14, 52], 1):
         ws.column_dimensions[get_column_letter(index)].width = width
     ws.freeze_panes = "A5"
     ws.sheet_view.showGridLines = False
@@ -102,22 +98,19 @@ def write_workbook(path, events, current=None):
     ws.append(HEADERS)
     for event in events:
         ws.append([event["observed_at"], event.get("retailer", ""), event.get("brand", ""),
-                   event["change_type"], event["name"], event["before"], event["after"],
-                   event["price"], event.get("original_price"), event.get("promotional_price"),
+                   event["change_type"], event["name"], event["price"],
+                   event.get("original_price"), event.get("promotional_price"),
                    event.get("discount_percent"), "Yes" if event.get("online_only") else "No",
-                   event.get("availability_label", ""), event["size"], event["image_url"],
+                   event.get("availability_label", ""), event["size"],
                    event["product_url"], event["event_id"]])
         row = ws.max_row
         ws.cell(row, 5).hyperlink = event["product_url"]
         ws.cell(row, 5).style = "Hyperlink"
-        if event["image_url"]:
-            ws.cell(row, 15).hyperlink = event["image_url"]
-            ws.cell(row, 15).style = "Hyperlink"
-    _style_sheet(ws, [22, 14, 18, 20, 48, 28, 28, 16, 16, 18, 12, 13, 22, 14, 52, 52, 28])
-    for column in ("H", "I", "J"):
+    _style_sheet(ws, [22, 14, 18, 42, 48, 16, 16, 18, 12, 13, 22, 14, 52, 28])
+    for column in ("F", "G", "H"):
         for cell in ws[column][1:]:
             cell.number_format = '"$"0.00'
-    for cell in ws["K"][1:]:
+    for cell in ws["I"][1:]:
         cell.number_format = "0.0%"
     if current is not None:
         for retailer in RETAILERS:
@@ -146,22 +139,19 @@ def render_html(events):
         rows = []
         for e in grouped:
             name = f'<a href="{escape(e["product_url"], quote=True)}">{escape(e["name"])}</a>'
-            image = (f'<a href="{escape(e["image_url"], quote=True)}">View image</a>'
-                     if e["image_url"] else "")
             price = "" if e["price"] is None else f'${float(e["price"]):.2f}'
             original = "" if e.get("original_price") is None else f'${float(e["original_price"]):.2f}'
             promotional = "" if e.get("promotional_price") is None else f'${float(e["promotional_price"]):.2f}'
             discount = "" if e.get("discount_percent") is None else f'{float(e["discount_percent"]):.1%}'
             rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
                         [escape(e.get("brand", "")), escape(e["change_type"]), name,
-                         escape(str(e["before"] or "")), escape(str(e["after"] or "")),
                          price, original, promotional, discount,
                          "Yes" if e.get("online_only") else "No",
-                         escape(e.get("availability_label", "")), escape(e["size"]), image]) + "</tr>")
+                         escape(e.get("availability_label", "")), escape(e["size"])]) + "</tr>")
         return """<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
-<th>Brand</th><th>Change</th><th>Product</th><th>Before</th><th>After</th><th>Current Price</th>
+<th>Brand</th><th>Change</th><th>Product</th><th>Current Price</th>
 <th>Original Price</th><th>Promotional Price</th><th>Discount</th><th>Online Only</th>
-<th>Availability</th><th>Size</th><th>Image</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
+<th>Availability</th><th>Size</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
     return ("<!doctype html><html><body><p>Changes detected since the previous successful weekly run:</p>" +
             _sectioned_html(events, render_table) +
             "<p>Sources: Coles and Woolworths product pages linked above.</p></body></html>")
@@ -174,8 +164,6 @@ def render_baseline_html(current):
         rows = []
         for product in grouped:
             name = f'<a href="{escape(product["product_url"], quote=True)}">{escape(product["name"])}</a>'
-            image = (f'<a href="{escape(product["image_url"], quote=True)}">View image</a>'
-                     if product["image_url"] else "")
             price = "" if product["price"] is None else f'${float(product["price"]):.2f}'
             original = ("" if product.get("original_price") is None else
                         f'${float(product["original_price"]):.2f}')
@@ -187,11 +175,11 @@ def render_baseline_html(current):
                         [escape(product.get("brand", "")), name, price, original, promotional,
                          discount, "Yes" if product.get("online_only") else "No",
                          escape(product.get("availability_label", "")),
-                         escape(product["size"]), image]) + "</tr>")
+                         escape(product["size"])]) + "</tr>")
         return """<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
 <th>Brand</th><th>Product</th><th>Current Price</th><th>Original Price</th>
 <th>Promotional Price</th><th>Discount</th><th>Online Only</th><th>Availability</th>
-<th>Size</th><th>Image</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
+<th>Size</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
     return """<!doctype html><html><body><p>Initial Coles and Woolworths product baseline for Cheltenham VIC 3192:</p>
 """ + _sectioned_html(list(current.values()), render_table) + \
         "<p>Future emails will contain only new changes.</p></body></html>"

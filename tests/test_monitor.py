@@ -1,6 +1,6 @@
 import unittest
 
-from coles_monitor.changes import compare, visible_products
+from coles_monitor.changes import compare, consolidate_events, visible_products
 from coles_monitor.matcher import is_allowed_product, is_wanted_name, keyword_group, split_name_size
 from coles_monitor.reporting import render_baseline_html, write_workbook
 from openpyxl import load_workbook
@@ -25,6 +25,9 @@ class MatcherTests(unittest.TestCase):
         self.assertFalse(is_allowed_product("Tomato Pasta Sauce", "Continental"))
         self.assertFalse(is_allowed_product("Tomato Paste", "Sirena"))
         self.assertTrue(is_allowed_product("Tomato Paste", "Leggo's"))
+        self.assertFalse(is_allowed_product("Basil Pesto", "Rana"))
+        self.assertFalse(is_allowed_product("Manual Food Chopper Pesto", "Example"))
+        self.assertFalse(is_allowed_product("Pesto Throw Rug", "Example"))
 
     def test_name_size(self):
         self.assertEqual(split_name_size("Brand Pesto | 190g"), ("Brand Pesto", "190g"))
@@ -49,6 +52,11 @@ class ReportingTests(unittest.TestCase):
             write_workbook(path, [], current)
             workbook = load_workbook(path)
             self.assertEqual(workbook.sheetnames, ["Coles", "Woolworths", "Change History"])
+            self.assertNotIn("Image URL", [cell.value for cell in workbook["Coles"][4]])
+            history_headers = [cell.value for cell in workbook["Change History"][1]]
+            self.assertNotIn("Before", history_headers)
+            self.assertNotIn("After", history_headers)
+            self.assertNotIn("Image URL", history_headers)
             ids = []
             for sheet_name in ("Coles", "Woolworths"):
                 ids.extend(cell.value for cell in workbook[sheet_name]["A"]
@@ -190,8 +198,21 @@ class ChangeTests(unittest.TestCase):
             "2": {"name": "B Passata", "price": 3.0, "size": "700g", "image_url": "c", "product_url": "v"},
         }
         events = compare(old, new, "2026-01-01T00:00:00+00:00")
-        self.assertEqual([e["change_type"] for e in events], ["Price changed", "Image changed", "New product"])
+        self.assertEqual([e["change_type"] for e in events],
+                         ["Price changed; Image changed", "New product"])
+        self.assertEqual(len({e["product_id"] for e in events}), len(events))
         self.assertEqual(compare(old, new, "later", [e["event_id"] for e in events]), [])
+
+    def test_legacy_history_is_consolidated_per_sku_and_observation(self):
+        events = [
+            {"observed_at": "now", "product_id": "coles:1", "change_type": "Price changed",
+             "event_id": "a", "name": "Pesto"},
+            {"observed_at": "now", "product_id": "coles:1", "change_type": "Image changed",
+             "event_id": "b", "name": "Pesto"},
+        ]
+        consolidated = consolidate_events(events)
+        self.assertEqual(len(consolidated), 1)
+        self.assertEqual(consolidated[0]["change_type"], "Price changed; Image changed")
 
 
 if __name__ == "__main__":

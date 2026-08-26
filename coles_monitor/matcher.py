@@ -25,8 +25,20 @@ def keyword_group(name):
 
 def is_allowed_product(name, brand=""):
     words = set(re.findall(r"[a-z]+", normalize(name).lower()))
-    excluded_brands = {"continental", "sirena"}
+    excluded_brands = {
+        "continental", "sirena", "capsicana", "latina", "san remo", "tandaco",
+        "my muscle", "my muscle chef", "coles made easy", "fitness outcomes",
+        "coles kitchen", "black swan", "rana", "red rock deli", "coles perform",
+        "cucina", "youfoodz", "prepara", "porto", "tovolo", "hot shot", "easy eats",
+    }
+    excluded_non_food_words = {
+        "chopper", "mandoline", "grater", "peeler", "utensil", "knife", "knives",
+        "scissors", "spatula", "spoon", "ladle", "tongs", "whisk", "colander",
+        "strainer", "cookware", "rug", "cushion", "chair", "stool", "lamp", "vase",
+        "planter", "furniture",
+    }
     return (is_wanted_name(name) and "fresh" not in words and
+            not words.intersection(excluded_non_food_words) and
             normalize(brand).lower() not in excluded_brands)
 
 
