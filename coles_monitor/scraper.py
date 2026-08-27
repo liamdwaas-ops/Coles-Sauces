@@ -8,6 +8,7 @@ from urllib.parse import quote, urlencode
 from curl_cffi import requests
 
 from .matcher import is_allowed_product, normalize, split_name_size
+from .promotions import find_multibuy_text, multibuy_unit_price
 
 
 BASE_URL = "https://www.coles.com.au"
@@ -126,6 +127,9 @@ class ColesScraper:
         except (TypeError, ValueError):
             was = None
         promotion_type = normalize(pricing.get("promotionType")).upper()
+        multibuy_text = find_multibuy_text(pricing)
+        multibuy_price = multibuy_unit_price(multibuy_text)
+        is_multibuy = bool(multibuy_text and isinstance(price, (int, float)))
         is_promo = bool(was and isinstance(price, (int, float)) and was > price and
                         (promotion_type in {"SPECIAL", "PERCENT_OFF"} or
                          pricing.get("onlineSpecial")))
@@ -140,9 +144,12 @@ class ColesScraper:
             availability_state = "out_of_stock"
         return product_id, {
             "retailer": "Coles", "brand": normalize(raw.get("brand")), "name": name,
-            "price": price, "original_price": was if is_promo else None,
-            "promotional_price": price if is_promo else None,
-            "discount_percent": round((was - price) / was, 4) if is_promo else None,
+            "price": price,
+            "original_price": price if is_multibuy else (was if is_promo else None),
+            "promotional_price": multibuy_text if is_multibuy else (price if is_promo else None),
+            "discount_percent": (round((price - multibuy_price) / price, 4)
+                                   if is_multibuy and multibuy_price is not None and price > multibuy_price
+                                   else (round((was - price) / was, 4) if is_promo else None)),
             "availability_state": availability_state,
             "availability_label": availability_type or ("Available" if available else "Out of stock"),
             "size": size, "image_url": uri,

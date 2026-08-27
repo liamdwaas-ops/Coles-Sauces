@@ -6,6 +6,7 @@ from curl_cffi import requests
 from curl_cffi.const import CurlHttpVersion
 
 from .matcher import is_allowed_product, normalize, split_name_size
+from .promotions import find_multibuy_text, multibuy_unit_price
 from .scraper import ScrapeError, USER_AGENT
 
 
@@ -83,6 +84,9 @@ class WoolworthsScraper:
             was = None
         is_promo = bool(was and isinstance(price, (int, float)) and was > price and
                         (raw.get("IsOnSpecial") or raw.get("IsOnlineOnly")))
+        multibuy_text = find_multibuy_text(raw)
+        multibuy_price = multibuy_unit_price(multibuy_text)
+        is_multibuy = bool(multibuy_text and isinstance(price, (int, float)))
         is_available = bool(raw.get("IsAvailable", True))
         is_in_stock = bool(raw.get("IsInStock", is_available))
         explicit_temporary = bool(raw.get("IsTemporarilyUnavailable"))
@@ -98,9 +102,11 @@ class WoolworthsScraper:
         return "woolworths:" + product_id, {
             "retailer": "Woolworths", "brand": normalize(raw.get("Brand")),
             "name": name, "price": price,
-            "original_price": was if is_promo else None,
-            "promotional_price": price if is_promo else None,
-            "discount_percent": round((was - price) / was, 4) if is_promo else None,
+            "original_price": price if is_multibuy else (was if is_promo else None),
+            "promotional_price": multibuy_text if is_multibuy else (price if is_promo else None),
+            "discount_percent": (round((price - multibuy_price) / price, 4)
+                                   if is_multibuy and multibuy_price is not None and price > multibuy_price
+                                   else (round((was - price) / was, 4) if is_promo else None)),
             "availability_state": availability_state, "availability_label": availability_label,
             "size": size,
             "online_only": bool(raw.get("IsOnlineOnly")),

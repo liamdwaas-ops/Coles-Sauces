@@ -2,7 +2,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "5325259f31acb35a67a91a90",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/1/1068269.jpg",
@@ -20,7 +20,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3469,
     "event_id": "9020ddd5bc95bf698668988b",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/1/1071332.jpg",
@@ -38,7 +38,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3469,
     "event_id": "b95c2639074342481d291be3",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/1/1071503.jpg",
@@ -92,7 +92,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "4e213ef92415bd3895e16c89",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/1/1274588.jpg",
@@ -110,7 +110,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Capsicana",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.6667,
     "event_id": "a95ab0d7b71b5ae470db41af",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/1/1325849.jpg",
@@ -128,7 +128,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Capsicana",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.6667,
     "event_id": "23487b201dd246d25a26fd8f",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/1/1325850.jpg",
@@ -272,7 +272,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "San Remo",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2857,
     "event_id": "b20cf49e2656412e217e9550",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/3/3221505.jpg",
@@ -308,7 +308,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "07bc0637947b6ade8053bc91",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/3/3591130.jpg",
@@ -416,7 +416,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "57c796ff6fc3d6ee49a1da14",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/3/3946745.jpg",
@@ -434,7 +434,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "9714b245fd94b9148e904c86",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/3/3946756.jpg",
@@ -470,7 +470,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "f5d8c9e1547b0033ee2d12d2",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/4/4995236.jpg",
@@ -488,7 +488,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "7312c5768aa71d65e2c605ce",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/4/4995316.jpg",
@@ -506,7 +506,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "62ccb8e6bbd02ac2938d1e72",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/4/4995407.jpg",
@@ -578,7 +578,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Tandaco",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "bc3119a8a1e5d97187b2067b",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/5/5150474.jpg",
@@ -596,7 +596,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "San Remo",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2857,
     "event_id": "e60a2c1c3428898d9d94cc95",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/5/5177244.jpg",
@@ -614,7 +614,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "San Remo",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2857,
     "event_id": "c2fc2fedb4a3953d0d8cfa02",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/5/5177288.jpg",
@@ -632,7 +632,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "San Remo",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2857,
     "event_id": "6e95700bceb3ba022ff6fac4",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/5/5177299.jpg",
@@ -650,7 +650,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1143,
     "event_id": "51322e50d74203aecf81258c",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/5/5231690.jpg",
@@ -776,7 +776,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Val Verde",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "f60c599a565f6168c148f17f",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/6/6008796.jpg",
@@ -812,7 +812,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Barilla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1038,
     "event_id": "d720cbeac81061012e0fa543",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/6/6327513.jpg",
@@ -830,7 +830,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Leggos",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "19ece0d697dc8d42e0ada2e5",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/6/6365308.jpg",
@@ -992,7 +992,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Australian Organic Food Co",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "ce2b3f14f82a9ffd5ebb14f0",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/7/7831440.jpg",
@@ -1118,7 +1118,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Barilla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1038,
     "event_id": "a38ffd249d374e2c498b6c61",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/8/8397098.jpg",
@@ -1154,7 +1154,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Barilla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1949,
     "event_id": "c8d909fc07b0b6c703cf9165",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/9/9019132.jpg",
@@ -1172,7 +1172,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "c356b6d068832eab667480d5",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/9/9164255.jpg",
@@ -1190,7 +1190,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Leggos",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "c8fb20df4794f0abed97c2b3",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/9/9164313.jpg",
@@ -1226,7 +1226,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Latina",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "536d79b9e23840e63396921b",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/9/9954600.jpg",
@@ -1244,7 +1244,7 @@
   {
     "availability_label": "InStoreAndOnline",
     "brand": "Latina",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "5fff43330bfd44564d06b6ac",
     "image_url": "https://cdn.productimages.coles.com.au/productimages/9/9954622.jpg",
@@ -1550,7 +1550,7 @@
   {
     "availability_label": "Available",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "25a7ae4e15b9cbdee09ba13c",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/150664.jpg",
@@ -1604,7 +1604,7 @@
   {
     "availability_label": "Available",
     "brand": "Barilla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "0852606e455a19c2af508059",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/190944.jpg",
@@ -1622,7 +1622,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.307,
     "event_id": "051963f271ddf689ea9499cf",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/216868.jpg",
@@ -1640,7 +1640,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.307,
     "event_id": "2bf9bba19661d6b26c1020cd",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/216869.jpg",
@@ -1658,7 +1658,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.307,
     "event_id": "c636154b570010b7ac5f401b",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/217642.jpg",
@@ -1676,7 +1676,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3091,
     "event_id": "93acf12bb41ee19b22a52133",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/218066.jpg",
@@ -1694,7 +1694,7 @@
   {
     "availability_label": "Available",
     "brand": "Barilla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "5371b0e729dac4e7a2a60741",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/238030.jpg",
@@ -1712,7 +1712,7 @@
   {
     "availability_label": "Available",
     "brand": "Sacla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3,
     "event_id": "c769ff71244e137e6739fab5",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/258380.jpg",
@@ -1730,7 +1730,7 @@
   {
     "availability_label": "Available",
     "brand": "Sacla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3,
     "event_id": "94041817663f7717f6249089",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/258381.jpg",
@@ -1766,7 +1766,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3021,
     "event_id": "9edc0a2bc774dfeb3fefcadd",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/280403.jpg",
@@ -1784,7 +1784,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3021,
     "event_id": "b3ca8abdfbfd6bd944dd3bcd",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/290297.jpg",
@@ -1802,7 +1802,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3108,
     "event_id": "d646ed16135b4832faf41b23",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/290301.jpg",
@@ -1820,7 +1820,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3125,
     "event_id": "e43addbd5f6c54b5288be173",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/290303.jpg",
@@ -1856,7 +1856,7 @@
   {
     "availability_label": "Available",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2083,
     "event_id": "f307c4bd90dd17a297ea0bec",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/317353.jpg",
@@ -1892,7 +1892,7 @@
   {
     "availability_label": "Available",
     "brand": "Barilla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "68ddbf64c16ae5b36b0864b6",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/003466.jpg",
@@ -1928,7 +1928,7 @@
   {
     "availability_label": "Available",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "cff6b7953f020ea48bceb124",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/038648.jpg",
@@ -1964,7 +1964,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3021,
     "event_id": "84e673824ba584c81ba652e8",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/408334.jpg",
@@ -2018,7 +2018,7 @@
   {
     "availability_label": "Available",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "915f128025f02479d646e33e",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/431794.jpg",
@@ -2054,7 +2054,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3021,
     "event_id": "ebc763ff913eb6e304fbbe20",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6002726.jpg",
@@ -2072,7 +2072,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.307,
     "event_id": "488146de7a3a558b8c05f742",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6018777.jpg",
@@ -2144,7 +2144,7 @@
   {
     "availability_label": "Available",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2083,
     "event_id": "c6873abc80a40636fd9c9b54",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6038814.jpg",
@@ -2162,7 +2162,7 @@
   {
     "availability_label": "Available",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2083,
     "event_id": "e43aedaebfca0cb9db8fe9a1",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6039158.jpg",
@@ -2180,7 +2180,7 @@
   {
     "availability_label": "Available",
     "brand": "Bella Cucina",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.5,
     "event_id": "5bdf1df29c4034fa6d368539",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6040643.jpg",
@@ -2198,7 +2198,7 @@
   {
     "availability_label": "Available",
     "brand": "Bella Cucina",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.5,
     "event_id": "e6982cbf6289ed9cd1ff2562",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6040682.jpg",
@@ -2216,7 +2216,7 @@
   {
     "availability_label": "Available",
     "brand": "Bella Cucina",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.5,
     "event_id": "c9c88a4a862f2f83985c9ce3",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6040753.jpg",
@@ -2234,7 +2234,7 @@
   {
     "availability_label": "Available",
     "brand": "Bella Cucina",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.5,
     "event_id": "d829d8f2a4e807be3c30cc7b",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6040823.jpg",
@@ -2252,7 +2252,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3108,
     "event_id": "b22a7c15954bc48c3076956a",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6048427.jpg",
@@ -2306,7 +2306,7 @@
   {
     "availability_label": "Available",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2083,
     "event_id": "c3ce75147d69ff65b1fd4c7e",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/6058427.jpg",
@@ -2378,7 +2378,7 @@
   {
     "availability_label": "Available",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "0c1254a17ccf9fea488e1062",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/758286.jpg",
@@ -2396,7 +2396,7 @@
   {
     "availability_label": "Available",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "8db617cacd9ea3208907a866",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/758288.jpg",
@@ -2414,7 +2414,7 @@
   {
     "availability_label": "Available",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "4edd87b05f3df1d92ccb677e",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/758299.jpg",
@@ -2432,7 +2432,7 @@
   {
     "availability_label": "Available",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "4afe3c78548c44b5820ab276",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/758342.jpg",
@@ -2450,7 +2450,7 @@
   {
     "availability_label": "Available",
     "brand": "Dolmio",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": null,
     "event_id": "fa9c803f76fde4ffff139820",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/758447.jpg",
@@ -2468,7 +2468,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3021,
     "event_id": "f229195e9a90aed86701edd6",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/795297.jpg",
@@ -2486,7 +2486,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3,
     "event_id": "cfe30af7afead9b302cc76d2",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/081641.jpg",
@@ -2504,7 +2504,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3021,
     "event_id": "080ebecf72acb27b7edb6afc",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/081712.jpg",
@@ -2522,7 +2522,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3021,
     "event_id": "f6936088a0dac427c54dd2f4",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/081715.jpg",
@@ -2540,7 +2540,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3043,
     "event_id": "a3c3425434335e8048ea3332",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/081717.jpg",
@@ -2558,7 +2558,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3085,
     "event_id": "46099f4df8108eb6e704cbbd",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/081718.jpg",
@@ -2576,7 +2576,7 @@
   {
     "availability_label": "Available",
     "brand": "Mutti",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3085,
     "event_id": "97fc5822115aeed9bed4bb5d",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/081719.jpg",
@@ -2594,7 +2594,7 @@
   {
     "availability_label": "Available",
     "brand": "Sacla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3,
     "event_id": "a0e642160667bbcbd15c9550",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/087820.jpg",
@@ -2612,7 +2612,7 @@
   {
     "availability_label": "Available",
     "brand": "Sacla",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.3,
     "event_id": "a3effee323a367ff4f93f716",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/088313.jpg",
@@ -2666,7 +2666,7 @@
   {
     "availability_label": "Available",
     "brand": "Leggo's",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.2083,
     "event_id": "cc0abfcdda32d50e67a695ca",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/934033.jpg",
@@ -2738,7 +2738,7 @@
   {
     "availability_label": "Available",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "7880c6d56b89821efef48025",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/957588.jpg",
@@ -2756,7 +2756,7 @@
   {
     "availability_label": "Available",
     "brand": "Providore",
-    "change_type": "Price changed; Original price changed; Promotional price changed; Discount percentage changed",
+    "change_type": "Price changed",
     "discount_percent": 0.1667,
     "event_id": "e4d30fd3db130dee6b196a78",
     "image_url": "https://cdn0.woolworths.media/content/wowproductimages/medium/957594.jpg",

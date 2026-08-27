@@ -132,6 +132,15 @@ def _sectioned_html(items, row_renderer):
     return "".join(sections)
 
 
+def _format_price(value):
+    if value is None:
+        return ""
+    try:
+        return f'${float(value):.2f}'
+    except (TypeError, ValueError):
+        return escape(str(value))
+
+
 def render_html(events):
     def render_table(grouped):
         if not grouped:
@@ -139,9 +148,9 @@ def render_html(events):
         rows = []
         for e in grouped:
             name = f'<a href="{escape(e["product_url"], quote=True)}">{escape(e["name"])}</a>'
-            price = "" if e["price"] is None else f'${float(e["price"]):.2f}'
-            original = "" if e.get("original_price") is None else f'${float(e["original_price"]):.2f}'
-            promotional = "" if e.get("promotional_price") is None else f'${float(e["promotional_price"]):.2f}'
+            price = _format_price(e["price"])
+            original = _format_price(e.get("original_price"))
+            promotional = _format_price(e.get("promotional_price"))
             discount = "" if e.get("discount_percent") is None else f'{float(e["discount_percent"]):.1%}'
             rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
                         [escape(e.get("brand", "")), escape(e["change_type"]), name,
@@ -164,11 +173,9 @@ def render_baseline_html(current):
         rows = []
         for product in grouped:
             name = f'<a href="{escape(product["product_url"], quote=True)}">{escape(product["name"])}</a>'
-            price = "" if product["price"] is None else f'${float(product["price"]):.2f}'
-            original = ("" if product.get("original_price") is None else
-                        f'${float(product["original_price"]):.2f}')
-            promotional = ("" if product.get("promotional_price") is None else
-                           f'${float(product["promotional_price"]):.2f}')
+            price = _format_price(product["price"])
+            original = _format_price(product.get("original_price"))
+            promotional = _format_price(product.get("promotional_price"))
             discount = ("" if product.get("discount_percent") is None else
                         f'{float(product["discount_percent"]):.1%}')
             rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in

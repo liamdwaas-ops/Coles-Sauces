@@ -4,6 +4,13 @@ import json
 
 FIELDS = ("name", "price", "original_price", "promotional_price",
           "discount_percent", "size", "image_url", "online_only")
+PRICE_FIELDS = {"price", "original_price", "promotional_price", "discount_percent"}
+PRICE_CHANGE_TYPES = {"Price changed", "Original price changed",
+                      "Promotional price changed", "Discount percentage changed"}
+
+
+def summarize_change_type(change_type):
+    return "Price changed" if change_type in PRICE_CHANGE_TYPES else change_type
 
 
 def stable_event_id(product_id, change_type, before, after=None):
@@ -41,10 +48,11 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                         "promotional_price": "Promotional price",
                         "discount_percent": "Discount percentage",
                     }
-                    label = labels.get(field, field.replace("_url", "").title())
+                    label = ("Price" if field in PRICE_FIELDS else
+                             labels.get(field, field.replace("_url", "").title()))
                     candidates.append((label + " changed", before, after))
         if candidates:
-            change_type = "; ".join(candidate[0] for candidate in candidates)
+            change_type = "; ".join(dict.fromkeys(candidate[0] for candidate in candidates))
             changes = [(candidate[0], candidate[1], candidate[2]) for candidate in candidates]
             event_id = stable_event_id(product_id, change_type, changes)
             if event_id not in seen:
@@ -83,7 +91,8 @@ def consolidate_events(events):
         target = grouped[key]
         if event.get("event_id") and event["event_id"] not in target["_ids"]:
             target["_ids"].append(event["event_id"])
-        for change_type in str(event.get("change_type", "")).split("; "):
+        for raw_change_type in str(event.get("change_type", "")).split("; "):
+            change_type = summarize_change_type(raw_change_type)
             if change_type and change_type not in target["_types"]:
                 target["_types"].append(change_type)
         for field, value in event.items():

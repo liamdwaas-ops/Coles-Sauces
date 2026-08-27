@@ -28,6 +28,8 @@ class MatcherTests(unittest.TestCase):
         self.assertFalse(is_allowed_product("Basil Pesto", "Rana"))
         self.assertFalse(is_allowed_product("Manual Food Chopper Pesto", "Example"))
         self.assertFalse(is_allowed_product("Pesto Throw Rug", "Example"))
+        self.assertFalse(is_allowed_product("San Remo Tomato Paste", "Example"))
+        self.assertFalse(is_allowed_product("My Muscle Chef Pasta Sauce", "Example"))
 
     def test_name_size(self):
         self.assertEqual(split_name_size("Brand Pesto | 190g"), ("Brand Pesto", "190g"))
@@ -98,6 +100,17 @@ class LocationTests(unittest.TestCase):
         scraper = ColesScraper(location=location)
         self.assertEqual(scraper.location, location)
 
+    def test_coles_multibuy_text_is_captured(self):
+        _, product = ColesScraper._product({
+            "id": "1", "name": "Example Passata", "availability": True,
+            "pricing": {"now": 4.6, "specialType": "MULTI_SAVE",
+                        "offerDescription": "Pick any 2 for $7",
+                        "multiBuyPromotion": {"minQuantity": 2, "reward": 3.5}},
+        })
+        self.assertEqual(product["original_price"], 4.6)
+        self.assertEqual(product["promotional_price"], "Pick any 2 for $7")
+        self.assertEqual(product["discount_percent"], 0.2391)
+
 
 class WoolworthsTests(unittest.TestCase):
     def test_nested_search_response_mapping(self):
@@ -140,6 +153,15 @@ class WoolworthsTests(unittest.TestCase):
             "Brand": "Example", "Price": 3.0, "WasPrice": 4.0, "IsOnSpecial": False
         })
         self.assertIsNone(not_promo["original_price"])
+
+    def test_woolworths_multibuy_text_is_captured(self):
+        _, product = WoolworthsScraper._product({
+            "Stockcode": 5, "Name": "Example Passata", "Price": 4.0,
+            "PromotionDescription": "2 for $6", "IsAvailable": True, "IsInStock": True,
+        })
+        self.assertEqual(product["original_price"], 4.0)
+        self.assertEqual(product["promotional_price"], "2 for $6")
+        self.assertEqual(product["discount_percent"], 0.25)
 
     def test_woolworths_availability_mapping(self):
         _, temporary = WoolworthsScraper._product({
