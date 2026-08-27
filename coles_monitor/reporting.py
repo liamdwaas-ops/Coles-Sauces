@@ -11,12 +11,12 @@ from openpyxl.utils import get_column_letter
 from .matcher import keyword_group
 
 
-HEADERS = ["Observed (UTC)", "Retailer", "Brand", "Change", "Product",
+HEADERS = ["Observed (UTC)", "Retailer", "Brand", "Product", "Change Summary",
            "Current Price (AUD)", "Original Price (AUD)", "Promotional Price (AUD)",
            "Discount", "Online Only", "Availability", "Size", "Product URL", "Event ID"]
 RETAILERS = ("Coles", "Woolworths")
 GROUPS = ("Tomato Paste", "Pasta Sauce", "Passata", "Pesto")
-PRODUCT_HEADERS = ["Product ID", "Brand", "Product", "Current Price (AUD)",
+PRODUCT_HEADERS = ["Product ID", "Brand", "Product", "Change Summary", "Current Price (AUD)",
                    "Original Price (AUD)", "Promotional Price (AUD)", "Discount",
                    "Online Only", "Availability", "Size", "Product URL"]
 
@@ -34,7 +34,7 @@ def _style_sheet(ws, widths):
     ws.sheet_view.showGridLines = False
 
 
-def _write_retailer_sheet(wb, retailer, current):
+def _write_retailer_sheet(wb, retailer, report_events):
     ws = wb.create_sheet(retailer, len(wb.sheetnames) - 1)
     last_column = get_column_letter(len(PRODUCT_HEADERS))
     ws.merge_cells(f"A1:{last_column}1")
@@ -43,8 +43,7 @@ def _write_retailer_sheet(wb, retailer, current):
     ws["A1"].font = Font(color="FFFFFF", bold=True, size=16)
     ws["A1"].alignment = Alignment(horizontal="center")
     row = 3
-    retailer_products = [(product_id, product) for product_id, product in current.items()
-                         if product.get("retailer") == retailer]
+    retailer_products = [event for event in report_events if event.get("retailer") == retailer]
     for group_index, group in enumerate(GROUPS, 1):
         ws.merge_cells(start_row=row, start_column=1, end_row=row,
                        end_column=len(PRODUCT_HEADERS))
@@ -57,11 +56,12 @@ def _write_retailer_sheet(wb, retailer, current):
         for cell in ws[header_row]:
             cell.fill = PatternFill("solid", fgColor="7F6000")
             cell.font = Font(color="FFFFFF", bold=True)
-        matches = sorted(((product_id, product) for product_id, product in retailer_products
-                          if keyword_group(product["name"]) == group),
-                         key=lambda item: item[1]["name"].lower())
-        for product_id, product in matches:
-            ws.append([product_id, product.get("brand", ""), product["name"], product["price"],
+        matches = sorted((event for event in retailer_products
+                          if keyword_group(event["name"]) == group),
+                         key=lambda event: event["name"].lower())
+        for product in matches:
+            ws.append([product.get("product_id", ""), product.get("brand", ""), product["name"],
+                       product.get("change_type", ""), product["price"],
                        product.get("original_price"), product.get("promotional_price"),
                        product.get("discount_percent"),
                        "Yes" if product.get("online_only") else "No",
@@ -70,9 +70,9 @@ def _write_retailer_sheet(wb, retailer, current):
             data_row = ws.max_row
             ws.cell(data_row, 3).hyperlink = product["product_url"]
             ws.cell(data_row, 3).style = "Hyperlink"
-            for column in (4, 5, 6):
+            for column in (5, 6, 7):
                 ws.cell(data_row, column).number_format = '"$"0.00'
-            ws.cell(data_row, 7).number_format = "0.0%"
+            ws.cell(data_row, 8).number_format = "0.0%"
         if matches:
             table_name = f'{retailer}{group.replace(" ", "")}Table'
             table = Table(displayName=table_name,
@@ -85,28 +85,28 @@ def _write_retailer_sheet(wb, retailer, current):
             ws.cell(row, 1, "No matching SKUs")
             ws.cell(row, 1).font = Font(italic=True, color="666666")
         row = ws.max_row + 2
-    for index, width in enumerate([18, 18, 50, 16, 16, 18, 12, 13, 22, 14, 52], 1):
+    for index, width in enumerate([18, 18, 50, 18, 16, 16, 18, 12, 13, 22, 14, 52], 1):
         ws.column_dimensions[get_column_letter(index)].width = width
     ws.freeze_panes = "A5"
     ws.sheet_view.showGridLines = False
 
 
-def write_workbook(path, events, current=None):
+def write_workbook(path, events, current=None, report_events=None):
     wb = Workbook()
     ws = wb.active
     ws.title = "Change History"
     ws.append(HEADERS)
     for event in events:
         ws.append([event["observed_at"], event.get("retailer", ""), event.get("brand", ""),
-                   event["change_type"], event["name"], event["price"],
+                   event["name"], event["change_type"], event["price"],
                    event.get("original_price"), event.get("promotional_price"),
                    event.get("discount_percent"), "Yes" if event.get("online_only") else "No",
                    event.get("availability_label", ""), event["size"],
                    event["product_url"], event["event_id"]])
         row = ws.max_row
-        ws.cell(row, 5).hyperlink = event["product_url"]
-        ws.cell(row, 5).style = "Hyperlink"
-    _style_sheet(ws, [22, 14, 18, 42, 48, 16, 16, 18, 12, 13, 22, 14, 52, 28])
+        ws.cell(row, 4).hyperlink = event["product_url"]
+        ws.cell(row, 4).style = "Hyperlink"
+    _style_sheet(ws, [22, 14, 18, 48, 18, 16, 16, 18, 12, 13, 22, 14, 52, 28])
     for column in ("F", "G", "H"):
         for cell in ws[column][1:]:
             cell.number_format = '"$"0.00'
@@ -114,7 +114,7 @@ def write_workbook(path, events, current=None):
         cell.number_format = "0.0%"
     if current is not None:
         for retailer in RETAILERS:
-            _write_retailer_sheet(wb, retailer, current)
+            _write_retailer_sheet(wb, retailer, report_events or [])
     wb.save(path)
 
 
@@ -153,12 +153,12 @@ def render_html(events):
             promotional = _format_price(e.get("promotional_price"))
             discount = "" if e.get("discount_percent") is None else f'{float(e["discount_percent"]):.1%}'
             rows.append("<tr>" + "".join(f"<td>{v}</td>" for v in
-                        [escape(e.get("brand", "")), escape(e["change_type"]), name,
+                        [escape(e.get("brand", "")), name, escape(e["change_type"]),
                          price, original, promotional, discount,
                          "Yes" if e.get("online_only") else "No",
                          escape(e.get("availability_label", "")), escape(e["size"])]) + "</tr>")
         return """<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
-<th>Brand</th><th>Change</th><th>Product</th><th>Current Price</th>
+<th>Brand</th><th>Product</th><th>Change Summary</th><th>Current Price</th>
 <th>Original Price</th><th>Promotional Price</th><th>Discount</th><th>Online Only</th>
 <th>Availability</th><th>Size</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
     return ("<!doctype html><html><body><p>Changes detected since the previous successful weekly run:</p>" +

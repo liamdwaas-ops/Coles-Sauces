@@ -114,7 +114,7 @@ def main():
         previous, current, observed_at, (e["event_id"] for e in history)
     )
     updated_history = history + events
-    write_workbook(workbook_path, updated_history, display_current)
+    write_workbook(workbook_path, updated_history, display_current, report_events=events)
     save_json(DATA / "current.json", current)
     save_json(DATA / "events.json", updated_history)
     print(json.dumps({"products": len(current), "changes": len(events), "baseline": first_run,

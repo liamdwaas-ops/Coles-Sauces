@@ -10,7 +10,20 @@ PRICE_CHANGE_TYPES = {"Price changed", "Original price changed",
 
 
 def summarize_change_type(change_type):
-    return "Price changed" if change_type in PRICE_CHANGE_TYPES else change_type
+    summaries = {
+        "Price changed": "Price",
+        "Original price changed": "Price",
+        "Promotional price changed": "Price",
+        "Discount percentage changed": "Price",
+        "Name changed": "Name",
+        "Size changed": "Size",
+        "Image changed": "Image",
+        "Online Only status changed": "Online only",
+        "New product": "New",
+        "Temporarily unavailable": "Unavailable",
+        "Back in stock": "Restocked",
+    }
+    return summaries.get(change_type, change_type)
 
 
 def stable_event_id(product_id, change_type, before, after=None):
@@ -50,9 +63,12 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                     }
                     label = ("Price" if field in PRICE_FIELDS else
                              labels.get(field, field.replace("_url", "").title()))
-                    candidates.append((label + " changed", before, after))
+                    raw_change_type = label + " changed"
+                    candidates.append((summarize_change_type(raw_change_type), before, after))
         if candidates:
-            change_type = "; ".join(dict.fromkeys(candidate[0] for candidate in candidates))
+            change_type = "; ".join(dict.fromkeys(
+                summarize_change_type(candidate[0]) for candidate in candidates
+            ))
             changes = [(candidate[0], candidate[1], candidate[2]) for candidate in candidates]
             event_id = stable_event_id(product_id, change_type, changes)
             if event_id not in seen:

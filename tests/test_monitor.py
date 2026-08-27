@@ -48,13 +48,20 @@ class ReportingTests(unittest.TestCase):
                         "price": 2.0, "size": "100g", "image_url": "", "product_url": "https://example/1"},
             "woolworths:2": {"retailer": "Woolworths", "brand": "B", "name": "Pasta Sauce",
                              "price": 3.0, "size": "500g", "image_url": "", "product_url": "https://example/2"},
+            "coles:unchanged": {"retailer": "Coles", "brand": "C", "name": "Basil Pesto",
+                                "price": 4.0, "size": "190g", "image_url": "",
+                                "product_url": "https://example/3"},
         }
+        changed = {key: value for key, value in current.items() if key != "coles:unchanged"}
+        report_events = compare({}, changed, "2026-01-01T00:00:00+00:00")
         with TemporaryDirectory() as directory:
             path = Path(directory) / "report.xlsx"
-            write_workbook(path, [], current)
+            write_workbook(path, report_events, current, report_events=report_events)
             workbook = load_workbook(path)
             self.assertEqual(workbook.sheetnames, ["Coles", "Woolworths", "Change History"])
             self.assertNotIn("Image URL", [cell.value for cell in workbook["Coles"][4]])
+            self.assertEqual([cell.value for cell in workbook["Coles"][4]][2:4],
+                             ["Product", "Change Summary"])
             history_headers = [cell.value for cell in workbook["Change History"][1]]
             self.assertNotIn("Before", history_headers)
             self.assertNotIn("After", history_headers)
@@ -63,7 +70,8 @@ class ReportingTests(unittest.TestCase):
             for sheet_name in ("Coles", "Woolworths"):
                 ids.extend(cell.value for cell in workbook[sheet_name]["A"]
                            if isinstance(cell.value, str) and ":" in cell.value)
-            self.assertCountEqual(ids, current.keys())
+            self.assertCountEqual(ids, changed.keys())
+            self.assertNotIn("coles:unchanged", ids)
         html = render_baseline_html(current)
         self.assertIn("<h2>Coles</h2>", html)
         self.assertIn("<h2>Woolworths</h2>", html)
@@ -185,7 +193,7 @@ class OnlineOnlyChangeTests(unittest.TestCase):
                            "product_url": "u"}}
         events = compare(old, new, "2026-01-01T00:00:00+00:00")
         self.assertEqual(len(events), 1)
-        self.assertEqual(events[0]["change_type"], "Online Only status changed")
+        self.assertEqual(events[0]["change_type"], "Online only")
         self.assertTrue(events[0]["online_only"])
 
 
@@ -196,14 +204,14 @@ class AvailabilityLifecycleTests(unittest.TestCase):
                             "availability_label": "Temporarily unavailable",
                             "product_url": "u"}}
         first = compare({}, temporary, "now")
-        self.assertEqual(first[0]["change_type"], "Temporarily unavailable")
+        self.assertEqual(first[0]["change_type"], "Unavailable")
         self.assertEqual(compare(temporary, temporary, "later"), [])
         self.assertEqual(visible_products({}, temporary), temporary)
         self.assertEqual(visible_products(temporary, temporary), {})
         available = {"1": {**temporary["1"], "availability_state": "in_stock",
                            "availability_label": "Available"}}
         back = compare(temporary, available, "later")
-        self.assertEqual(back[0]["change_type"], "Back in stock")
+        self.assertEqual(back[0]["change_type"], "Restocked")
         self.assertEqual(visible_products(temporary, available), available)
 
     def test_out_of_stock_is_hidden(self):
@@ -220,8 +228,7 @@ class ChangeTests(unittest.TestCase):
             "2": {"name": "B Passata", "price": 3.0, "size": "700g", "image_url": "c", "product_url": "v"},
         }
         events = compare(old, new, "2026-01-01T00:00:00+00:00")
-        self.assertEqual([e["change_type"] for e in events],
-                         ["Price changed; Image changed", "New product"])
+        self.assertEqual([e["change_type"] for e in events], ["Price; Image", "New"])
         self.assertEqual(len({e["product_id"] for e in events}), len(events))
         self.assertEqual(compare(old, new, "later", [e["event_id"] for e in events]), [])
 
@@ -234,7 +241,7 @@ class ChangeTests(unittest.TestCase):
         ]
         consolidated = consolidate_events(events)
         self.assertEqual(len(consolidated), 1)
-        self.assertEqual(consolidated[0]["change_type"], "Price changed; Image changed")
+        self.assertEqual(consolidated[0]["change_type"], "Price; Image")
 
 
 if __name__ == "__main__":

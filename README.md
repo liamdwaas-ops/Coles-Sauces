@@ -11,7 +11,7 @@ Products are excluded when the title contains the whole word `fresh`, when eithe
 
 It records product-name, current-price, pack-size, primary-image and **Online Only** status changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour. Online-only prices remain in the report and are visibly flagged.
 
-Each weekly report contains one row per changed SKU. When several fields change together, their labels are combined in the single `Change` cell. Before, after and image columns are intentionally omitted; product names remain linked to the retailer source page.
+Each weekly email and the main Coles/Woolworths workbook sheets contain only SKUs that changed versus the previous successful weekly snapshot, with one row per changed SKU. Unchanged catalogue SKUs are omitted. A compact `Change Summary` column sits beside the linked product name and combines simultaneous changes using brief labels such as `Price`, `New`, `Image`, `Unavailable`, or `Restocked`. Before, after and image columns are intentionally omitted; the separate `Change History` sheet remains the audit trail across runs.
 
 Current price, original price, promotional price and percentage discount have separate columns. These promotion fields are populated only when the retailer explicitly identifies a standard price reduction or multibuy offer.
 
