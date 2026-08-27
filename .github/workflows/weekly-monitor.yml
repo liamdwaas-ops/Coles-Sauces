@@ -12,6 +12,7 @@ on:
       - "tests/**"
       - ".send-latest-once"
       - ".send-test-once"
+      - ".send-multibuy-test-once"
   schedule:
     # 06:00 AEST every Wednesday (fixed UTC+10; 07:00 local during AEDT).
     - cron: "0 20 * * 2"
@@ -43,6 +44,21 @@ jobs:
 
       - name: Run tests
         run: python -m unittest discover -s tests -v
+
+      - name: Send explicit multibuy test once
+        if: ${{ hashFiles('.send-multibuy-test-once') != '' }}
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python run_monitor.py --send-multibuy-test
+
+      - name: Retire multibuy-test marker
+        if: ${{ hashFiles('.send-multibuy-test-once') != '' }}
+        run: |
+          git config user.name "coles-monitor[bot]"
+          git config user.email "coles-monitor[bot]@users.noreply.github.com"
+          git rm .send-multibuy-test-once
+          git commit -m "Mark multibuy test as sent"
+          git push
 
       - name: Send current catalogue test once
         if: ${{ hashFiles('.send-test-once') != '' }}

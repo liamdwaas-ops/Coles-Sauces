@@ -7,6 +7,7 @@ import sys
 
 from coles_monitor.changes import compare, consolidate_events, visible_products
 from coles_monitor.matcher import is_allowed_product
+from coles_monitor.promotions import find_multibuy_text
 from coles_monitor.reporting import email_visible_events, send_email, write_workbook
 from coles_monitor.scraper import ColesScraper
 from coles_monitor.woolworths import WoolworthsScraper
@@ -56,6 +57,7 @@ def main():
     parser.add_argument("--email-baseline", action="store_true")
     parser.add_argument("--send-existing-baseline", action="store_true")
     parser.add_argument("--send-latest-events", action="store_true")
+    parser.add_argument("--send-multibuy-test", action="store_true")
     parser.add_argument("--reset-baseline", action="store_true",
                         help="Adopt the current catalogue without recording schema/filter changes")
     parser.add_argument("--fixture", help="Use a local JSON product snapshot (tests only)")
@@ -66,6 +68,24 @@ def main():
                 if is_allowed_product(product.get("name", ""), product.get("brand", ""))}
     history = consolidate_events(load_json(DATA / "events.json", []))
     workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
+    if args.send_multibuy_test:
+        test_events = []
+        observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        for product_id, product in previous.items():
+            if find_multibuy_text(product.get("promotional_price", "")):
+                test_events.append({**product, "product_id": product_id,
+                                    "observed_at": observed_at,
+                                    "change_type": "Multibuy"})
+        if not test_events:
+            raise RuntimeError("No explicit multibuy offers are present in the current snapshot")
+        write_workbook(workbook_path, history, previous, report_events=test_events)
+        password = os.environ.get("GMAIL_APP_PASSWORD", "")
+        if not password:
+            raise RuntimeError("GMAIL_APP_PASSWORD is required to send the multibuy test")
+        send_email(config["sender"], config["recipient"], password, test_events,
+                   workbook_path)
+        print(json.dumps({"multibuy_test_products": len(test_events)}))
+        return
     if args.send_latest_events:
         if not history or not workbook_path.exists():
             raise RuntimeError("Existing change history and workbook are required")

@@ -171,6 +171,11 @@ class WoolworthsTests(unittest.TestCase):
         self.assertEqual(product["original_price"], 4.0)
         self.assertEqual(product["promotional_price"], "2 for $6")
         self.assertEqual(product["discount_percent"], 0.25)
+        old = {"woolworths:5": {**product, "promotional_price": None,
+                                 "original_price": None, "discount_percent": None}}
+        events = compare(old, {"woolworths:5": product}, "now")
+        self.assertEqual(events[0]["change_type"], "Price")
+        self.assertIn("2 for $6", render_html(events))
 
     def test_woolworths_availability_mapping(self):
         _, temporary = WoolworthsScraper._product({
