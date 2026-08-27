@@ -89,6 +89,10 @@ def compare(previous, current, observed_at, seen_event_ids=()):
                 "image_url": product.get("image_url", ""),
                 "online_only": bool(product.get("online_only")),
                 "product_url": product.get("product_url", ""),
+                "promotion_ended": bool(
+                    old and old.get("promotional_price") is not None and
+                    product.get("promotional_price") is None
+                ),
                 })
     return events
 

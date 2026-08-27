@@ -13,6 +13,8 @@ It records product-name, current-price, pack-size, primary-image and **Online On
 
 Each weekly email and the main Coles/Woolworths workbook sheets contain only SKUs that changed versus the previous successful weekly snapshot, with one row per changed SKU. Unchanged catalogue SKUs are omitted. A compact `Change Summary` column sits beside the linked product name and combines simultaneous changes using brief labels such as `Price`, `New`, `Image`, `Unavailable`, or `Restocked`. Before, after and image columns are intentionally omitted; the separate `Change History` sheet remains the audit trail across runs.
 
+When a SKU was promotional in the previous weekly snapshot and has returned to full price, that SKU is retained in the workbook audit trail but omitted from the email body. If a run contains only promotion-ending changes, no email is sent.
+
 Current price, original price, promotional price and percentage discount have separate columns. These promotion fields are populated only when the retailer explicitly identifies a standard price reduction or multibuy offer.
 
 Explicit multibuy offers such as `2 for $14.00` are recorded verbatim in the `Promotional Price` column. The discount percentage is calculated from the retailer-provided multibuy quantity and total against the current single-item price; no multibuy is inferred when the retailer does not provide an explicit offer.

@@ -2,7 +2,8 @@ import unittest
 
 from coles_monitor.changes import compare, consolidate_events, visible_products
 from coles_monitor.matcher import is_allowed_product, is_wanted_name, keyword_group, split_name_size
-from coles_monitor.reporting import render_baseline_html, write_workbook
+from coles_monitor.reporting import (email_visible_events, render_baseline_html,
+                                     render_html, write_workbook)
 from openpyxl import load_workbook
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -195,6 +196,22 @@ class OnlineOnlyChangeTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["change_type"], "Online only")
         self.assertTrue(events[0]["online_only"])
+
+
+class EmailVisibilityTests(unittest.TestCase):
+    def test_promotion_ending_is_retained_but_hidden_from_email(self):
+        old = {"coles:1": {"retailer": "Coles", "name": "Example Passata",
+                            "price": 3.0, "original_price": 4.0,
+                            "promotional_price": 3.0, "discount_percent": 0.25,
+                            "size": "700g", "image_url": "", "product_url": "u"}}
+        new = {"coles:1": {**old["coles:1"], "price": 4.0,
+                            "original_price": None, "promotional_price": None,
+                            "discount_percent": None}}
+        events = compare(old, new, "now")
+        self.assertEqual(len(events), 1)
+        self.assertTrue(events[0]["promotion_ended"])
+        self.assertEqual(email_visible_events(events), [])
+        self.assertNotIn("Example Passata", render_html(events))
 
 
 class AvailabilityLifecycleTests(unittest.TestCase):

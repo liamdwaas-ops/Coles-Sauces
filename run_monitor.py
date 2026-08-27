@@ -7,7 +7,7 @@ import sys
 
 from coles_monitor.changes import compare, consolidate_events, visible_products
 from coles_monitor.matcher import is_allowed_product
-from coles_monitor.reporting import send_email, write_workbook
+from coles_monitor.reporting import email_visible_events, send_email, write_workbook
 from coles_monitor.scraper import ColesScraper
 from coles_monitor.woolworths import WoolworthsScraper
 
@@ -123,12 +123,14 @@ def main():
     if args.no_email:
         return
     password = os.environ.get("GMAIL_APP_PASSWORD", "")
-    should_email = (first_run and args.email_baseline) or (not first_run and bool(events))
+    body_events = email_visible_events(events)
+    should_email = ((first_run and args.email_baseline) or
+                    (not first_run and bool(body_events)))
     if not should_email:
         return
     if not password:
         raise RuntimeError("GMAIL_APP_PASSWORD is required when changes need to be emailed")
-    send_email(config["sender"], config["recipient"], password, events, workbook_path,
+    send_email(config["sender"], config["recipient"], password, body_events, workbook_path,
                baseline=display_current if first_run else None)
 
 

@@ -141,7 +141,12 @@ def _format_price(value):
         return escape(str(value))
 
 
+def email_visible_events(events):
+    return [event for event in events if not event.get("promotion_ended")]
+
+
 def render_html(events):
+    events = email_visible_events(events)
     def render_table(grouped):
         if not grouped:
             return "<p>No changes.</p>"
@@ -201,6 +206,7 @@ def send_email(sender, recipient, app_password, events, workbook_path, baseline=
         msg.set_content("Initial Coles and Woolworths product baseline. Open as HTML or see the attached Excel workbook.")
         msg.add_alternative(render_baseline_html(baseline), subtype="html")
     else:
+        events = email_visible_events(events)
         msg["Subject"] = f"Coles & Woolworths product changes — {len(events)} change{'s' if len(events) != 1 else ''}"
         msg.set_content("Changes were detected. Open this message as HTML or see the attached Excel history.")
         msg.add_alternative(render_html(events), subtype="html")
