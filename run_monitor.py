@@ -72,6 +72,7 @@ def main():
         latest_observed_at = max(event["observed_at"] for event in history)
         latest_events = [event for event in history
                          if event["observed_at"] == latest_observed_at]
+        write_workbook(workbook_path, history, previous, report_events=latest_events)
         password = os.environ.get("GMAIL_APP_PASSWORD", "")
         if not password:
             raise RuntimeError("GMAIL_APP_PASSWORD is required to resend the latest update")
