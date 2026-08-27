@@ -11,6 +11,7 @@ on:
       - "run_monitor.py"
       - "tests/**"
       - ".send-latest-once"
+      - ".send-test-once"
   schedule:
     # 06:00 AEST every Wednesday (fixed UTC+10; 07:00 local during AEDT).
     - cron: "0 20 * * 2"
@@ -42,6 +43,21 @@ jobs:
 
       - name: Run tests
         run: python -m unittest discover -s tests -v
+
+      - name: Send current catalogue test once
+        if: ${{ hashFiles('.send-test-once') != '' }}
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python run_monitor.py --send-existing-baseline
+
+      - name: Retire catalogue-test marker
+        if: ${{ hashFiles('.send-test-once') != '' }}
+        run: |
+          git config user.name "coles-monitor[bot]"
+          git config user.email "coles-monitor[bot]@users.noreply.github.com"
+          git rm .send-test-once
+          git commit -m "Mark catalogue test as sent"
+          git push
 
       - name: Resend latest captured update once
         if: ${{ hashFiles('.send-latest-once') != '' }}
