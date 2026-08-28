@@ -120,6 +120,25 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(product["promotional_price"], "Pick any 2 for $7")
         self.assertEqual(product["discount_percent"], 0.2391)
 
+    def test_coles_multibuy_outside_pricing_is_captured(self):
+        _, product = ColesScraper._product({
+            "id": "2", "name": "Example Pasta Sauce", "availability": True,
+            "pricing": {"now": 4.5, "specialType": "MULTI_SAVE"},
+            "promotions": [{"offerDescription": "Any 2 for $7"}],
+        })
+        self.assertEqual(product["original_price"], 4.5)
+        self.assertEqual(product["promotional_price"], "2 for $7")
+        self.assertEqual(product["discount_percent"], 0.2222)
+
+    def test_coles_multibuy_badge_is_captured(self):
+        _, product = ColesScraper._product({
+            "id": "3", "name": "Example Pesto", "availability": True,
+            "pricing": {"now": 6.0},
+            "badges": {"promotion": {"PromotionText": "Buy 2 for $10.00"}},
+        })
+        self.assertEqual(product["promotional_price"], "2 for $10.00")
+        self.assertEqual(product["discount_percent"], 0.1667)
+
 
 class WoolworthsTests(unittest.TestCase):
     def test_nested_search_response_mapping(self):

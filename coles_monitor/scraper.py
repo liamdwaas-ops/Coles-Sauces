@@ -127,7 +127,10 @@ class ColesScraper:
         except (TypeError, ValueError):
             was = None
         promotion_type = normalize(pricing.get("promotionType")).upper()
-        multibuy_text = find_multibuy_text(pricing)
+        # Coles does not consistently nest its promotion copy under ``pricing``.
+        # Search pricing first (the usual shape), then the complete product so
+        # offers exposed in badges/promotions are not silently dropped.
+        multibuy_text = find_multibuy_text(pricing) or find_multibuy_text(raw)
         multibuy_price = multibuy_unit_price(multibuy_text)
         is_multibuy = bool(multibuy_text and isinstance(price, (int, float)))
         is_promo = bool(was and isinstance(price, (int, float)) and was > price and
