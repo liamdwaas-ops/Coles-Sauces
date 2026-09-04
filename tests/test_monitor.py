@@ -107,6 +107,10 @@ class ReportingTests(unittest.TestCase):
         self.assertLess(html.index("Alpha Pasta Sauce"), html.index("Zulu Pasta Sauce"))
         self.assertIn("$3.00 (Online only promotion)", html)
 
+    def test_test_baseline_is_clearly_labelled(self):
+        html = render_baseline_html({}, test=True)
+        self.assertIn("Live test baseline", html)
+
     def test_failed_retailer_is_not_described_as_no_changes(self):
         html = render_html([], failures=["Coles: ScrapeError: blocked"])
         coles_section = html.split("<h2>Coles</h2>", 1)[1].split("<h2>Woolworths</h2>", 1)[0]

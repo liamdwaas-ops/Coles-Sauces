@@ -21,7 +21,7 @@ Explicit multibuy offers such as `2 for $14.00` are recorded verbatim in the `Cu
 
 `Temporarily unavailable` products are shown once when they first enter that state, suppressed on subsequent runs, and shown again as `Back in stock` after availability returns. Other out-of-stock products are excluded.
 
-Pricing requests for both retailers are fixed to the online delivery context for **Cheltenham VIC 3192**, configured in `config.json`.
+The configured location is **Cheltenham VIC 3192**. Coles resolves that locality through its public location service and uses the returned fulfilment store for catalogue pricing. Woolworths receives postcode 3192 in its anonymous category request; because that response does not identify the selected store, the monitor describes those values as Woolworths online prices rather than claiming a particular store's shelf price.
 
 The first successful run emails the complete baseline once. Later runs send an email only when at least one new, previously unreported change exists. Product names in the HTML email and Excel workbook link to their Coles product pages. No-change runs send nothing. Removed or temporarily unavailable products are deliberately not reported because the requested change types do not include removals.
 
@@ -34,8 +34,7 @@ The workflow runs at `20:00 UTC Tuesday`, which is **06:00 AEST Wednesday**. Bec
 1. Create a private GitHub repository and push this folder as its root.
 2. In **Settings → Secrets and variables → Actions**, add:
    - `GMAIL_APP_PASSWORD`: a Google App Password for `liamdwaas@gmail.com` (never use or commit the normal Google password).
-   - `COLES_BUILD_ID`: optional fallback containing the current Coles Next.js `buildId`. The monitor first attempts automatic discovery. Add/update this only if a run says Coles blocked discovery.
-   - `RETAIL_PROXY_URL`: an Australian residential HTTPS proxy URL, including its provider-issued credentials. This is required on GitHub-hosted runners because Coles rejects GitHub datacenter IPs. Store it only as an Actions secret, for example in the provider's documented `http://user:password@host:port` format.
+   - `COLES_BUILD_ID`: optional fallback containing the current Coles Next.js `buildId`. The normal Coles route uses its anonymous storefront APIs, so this is used only by the category-page compatibility fallback.
 3. In **Settings → Actions → General → Workflow permissions**, select **Read and write permissions** so the workflow can commit its history.
 4. Pushing the initial setup creates and emails the baseline. **Actions → Weekly Coles product monitor → Run workflow** remains available for diagnostics, but a manual run does not resend an existing baseline.
 
@@ -45,8 +44,8 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 
 - After a baseline exists, a temporarily blocked retailer retains its last verified records while the other retailer continues normally. The workflow emits a GitHub warning, never interprets the access failure as removals, and retries the retailer on the next scheduled run.
 - Coles' flag comes from `pricing.onlineSpecial`/an online promotion label; Woolworths' flag comes from `IsOnlineOnly`. The monitor does not infer this status from price differences.
-- Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used. Coles is attempted through both the server-rendered category page and its equivalent public Next.js page-data route.
-- When `RETAIL_PROXY_URL` is present, both retailers use the same Australian proxy so their Cheltenham-context data is fetched consistently. The secret is never logged or written to a snapshot.
+- Browser-compatible anonymous sessions are used for the retailers' public storefront data routes; no login, cart or checkout access is used. Coles first resolves the configured locality and sauce taxonomy, then paginates its official public storefront product API. Its server-rendered category data remains a compatibility fallback.
+- The workflow does not use or require a retail proxy.
 - Both category scrapers validate pagination against the retailer's reported total before accepting a snapshot. An incomplete category traversal fails safely and retains the last verified retailer snapshot.
 - Change events have deterministic IDs and are stored in `data/events.json`, preventing duplicate reports.
 - The complete audit history and current combined catalogue are kept in `data/coles-woolworths-sauce-change-history.xlsx` and uploaded as a workflow artifact.

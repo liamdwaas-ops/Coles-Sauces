@@ -32,7 +32,6 @@ class ColesScraper:
         self.max_pages = max_pages
         self.page_size = page_size
         self.location = location or {}
-        self.proxy_url = os.getenv("RETAIL_PROXY_URL", "").strip()
         self.session = self._new_session()
         self.session.headers.update({"Accept": "application/json,text/html"})
         self.api_session_id = str(uuid.uuid4())
@@ -45,10 +44,7 @@ class ColesScraper:
         self.category_url = category_url or CATEGORY_URL
 
     def _new_session(self):
-        kwargs = {"impersonate": "chrome"}
-        if self.proxy_url:
-            kwargs["proxy"] = self.proxy_url
-        return requests.Session(**kwargs)
+        return requests.Session(impersonate="chrome")
 
     def _get(self, url, **kwargs):
         response = self.session.get(url, timeout=35, **kwargs)

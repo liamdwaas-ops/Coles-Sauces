@@ -74,6 +74,8 @@ def main():
     parser.add_argument("--no-email", action="store_true")
     parser.add_argument("--email-baseline", action="store_true")
     parser.add_argument("--send-existing-baseline", action="store_true")
+    parser.add_argument("--send-live-baseline-test", action="store_true",
+                        help="Scrape both retailers and email a test baseline without saving it")
     parser.add_argument("--send-latest-events", action="store_true")
     parser.add_argument("--send-multibuy-test", action="store_true")
     parser.add_argument("--source-smoke", action="store_true",
@@ -104,6 +106,33 @@ def main():
                                       product.get("category_group", ""))}
     history = consolidate_events(load_json(DATA / "events.json", []))
     workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
+    if args.send_live_baseline_test:
+        live = {}
+        counts = {}
+        for retailer, scraper in zip(("Coles", "Woolworths"),
+                                     configured_scrapers(config)):
+            products = scraper.scrape([])
+            if not products:
+                raise RuntimeError(f"{retailer} returned no products for the live test")
+            counts[retailer] = len(products)
+            live.update(products)
+        live = {product_id: {**product, "product_id": product_id}
+                for product_id, product in live.items()
+                if is_allowed_product(product.get("name", ""), product.get("brand", ""),
+                                      product.get("category_group", ""))}
+        baseline = visible_products({}, live, True)
+        if not baseline:
+            raise RuntimeError("No in-stock or newly unavailable products remained for the test")
+        write_workbook(workbook_path, history, baseline,
+                       report_events=list(baseline.values()))
+        password = os.environ.get("GMAIL_APP_PASSWORD", "")
+        if not password:
+            raise RuntimeError("GMAIL_APP_PASSWORD is required to send the live baseline test")
+        send_email(config["sender"], config["recipient"], password, [], workbook_path,
+                   baseline=baseline, test=True)
+        print(json.dumps({"live_baseline_email_products": len(baseline),
+                          "source_products": counts}, sort_keys=True))
+        return
     if args.send_multibuy_test:
         test_events = []
         observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()

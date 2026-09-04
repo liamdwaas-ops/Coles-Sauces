@@ -215,7 +215,7 @@ def render_html(events, failures=()):
             "<p>Sources: Coles and Woolworths product pages linked above.</p></body></html>")
 
 
-def render_baseline_html(current):
+def render_baseline_html(current, test=False):
     def render_table(grouped):
         if not grouped:
             return "<p>No matching SKUs.</p>"
@@ -233,20 +233,27 @@ def render_baseline_html(current):
         return """<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
 <th>Brand</th><th>Product</th><th>Size</th><th>Current Price</th><th>Original Price</th>
 <th>Discount</th><th>Availability</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
-    return """<!doctype html><html><body><p>Initial Coles and Woolworths product baseline for Cheltenham VIC 3192:</p>
-""" + _sectioned_html(list(current.values()), render_table) + \
+    intro = ("Live test baseline for Coles and Woolworths products requested for "
+             "Cheltenham VIC 3192:" if test else
+             "Initial Coles and Woolworths product baseline for Cheltenham VIC 3192:")
+    return f"<!doctype html><html><body><p>{intro}</p>\n" + \
+        _sectioned_html(list(current.values()), render_table) + \
         "<p>Future emails will contain only new changes.</p></body></html>"
 
 
 def send_email(sender, recipient, app_password, events, workbook_path, baseline=None,
-               failures=()):
+               failures=(), test=False):
     msg = EmailMessage()
     msg["From"], msg["To"] = sender, recipient
     msg["Date"] = formatdate(localtime=False)
     if baseline is not None:
-        msg["Subject"] = f"Coles & Woolworths product baseline — {len(baseline)} products"
-        msg.set_content("Initial Coles and Woolworths product baseline. Open as HTML or see the attached Excel workbook.")
-        msg.add_alternative(render_baseline_html(baseline), subtype="html")
+        prefix = "TEST - " if test else ""
+        msg["Subject"] = (f"{prefix}Coles & Woolworths product baseline - "
+                          f"{len(baseline)} products")
+        msg.set_content(("Live test baseline" if test else "Initial baseline") +
+                        " for Coles and Woolworths products. Open as HTML or see "
+                        "the attached Excel workbook.")
+        msg.add_alternative(render_baseline_html(baseline, test=test), subtype="html")
     else:
         events = email_visible_events(events)
         if failures and not events:
