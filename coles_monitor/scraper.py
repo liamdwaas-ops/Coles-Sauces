@@ -3,15 +3,17 @@ import json
 import os
 import re
 import time
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlparse
 
+from bs4 import BeautifulSoup
 from curl_cffi import requests
 
-from .matcher import is_allowed_product, normalize, split_name_size
+from .matcher import category_group, is_allowed_product, normalize, split_name_size
 from .promotions import find_multibuy_text, multibuy_unit_price
 
 
 BASE_URL = "https://www.coles.com.au"
+CATEGORY_URL = BASE_URL + "/browse/pantry/sauces?sortBy=recommendedDescending"
 USER_AGENT = "Mozilla/5.0 (compatible; ColesProductChangeMonitor/1.0; personal-use)"
 
 
@@ -21,7 +23,7 @@ class ScrapeError(RuntimeError):
 
 class ColesScraper:
     def __init__(self, delay=1.0, max_pages=20, page_size=48, location=None,
-                 verified_build_id_fallback=""):
+                 verified_build_id_fallback="", category_url=CATEGORY_URL):
         self.delay = delay
         self.max_pages = max_pages
         self.page_size = page_size
@@ -31,6 +33,7 @@ class ColesScraper:
         self.session.headers.update({"Accept": "application/json,text/html"})
         self.build_id = (os.getenv("COLES_BUILD_ID", "").strip() or
                          normalize(verified_build_id_fallback))
+        self.category_url = category_url or CATEGORY_URL
 
     def _new_session(self):
         kwargs = {"impersonate": "chrome"}
@@ -72,7 +75,7 @@ class ColesScraper:
 
     @staticmethod
     def _find_results(payload):
-        page_props = payload.get("pageProps", {})
+        page_props = payload.get("pageProps") or payload.get("props", {}).get("pageProps", {})
         likely = [page_props.get("searchResults"), page_props.get("results"), page_props.get("products")]
         for value in likely:
             if isinstance(value, dict):
@@ -105,12 +108,18 @@ class ColesScraper:
         slug = normalize(raw.get("slug") or raw.get("seoToken") or "")
         uri = ""
         images = raw.get("imageUris") or raw.get("images") or []
-        if images:
-            first = images[0]
-            uri = first.get("uri", "") if isinstance(first, dict) else str(first)
-        uri = raw.get("imageUrl") or raw.get("image_url") or uri
+        image_urls = []
+        for image in images:
+            candidate = image.get("uri", "") if isinstance(image, dict) else str(image)
+            if candidate.startswith("/"):
+                candidate = "https://cdn.productimages.coles.com.au/productimages" + candidate
+            if candidate and candidate not in image_urls:
+                image_urls.append(candidate)
+        uri = raw.get("imageUrl") or raw.get("image_url") or (image_urls[0] if image_urls else "")
         if uri.startswith("/"):
             uri = "https://cdn.productimages.coles.com.au/productimages" + uri
+        if uri and uri not in image_urls:
+            image_urls.insert(0, uri)
         product_url = raw.get("url") or (f"{BASE_URL}/product/{slug}" if slug else "")
         if product_url.startswith("/"):
             product_url = BASE_URL + product_url
@@ -145,6 +154,7 @@ class ColesScraper:
             availability_state = "temporary_unavailable"
         else:
             availability_state = "out_of_stock"
+        group = category_group(name)
         return product_id, {
             "retailer": "Coles", "brand": normalize(raw.get("brand")), "name": name,
             "price": price,
@@ -155,11 +165,100 @@ class ColesScraper:
                                    else (round((was - price) / was, 4) if is_promo else None)),
             "availability_state": availability_state,
             "availability_label": availability_type or ("Available" if available else "Out of stock"),
-            "size": size, "image_url": uri,
+            "size": size, "image_url": uri, "image_urls": image_urls,
+            "category_group": group,
             "online_only": bool(pricing.get("onlineSpecial")) or
                            "ONLINE" in normalize(pricing.get("promotionType")).upper(),
             "product_url": product_url, "source": product_url,
         }
+
+    def browse(self):
+        """Read every page of the configured Coles sauce category."""
+        parsed = urlparse(self.category_url)
+        category_path = parsed.path or "/browse/pantry/sauces"
+        base_params = dict(parse_qsl(parsed.query))
+        base_params.setdefault("sortBy", "recommendedDescending")
+        if self.location.get("postcode"):
+            base_params["postcode"] = self.location["postcode"]
+        if self.location.get("state"):
+            base_params["state"] = self.location["state"]
+        if self.location.get("context_mode"):
+            base_params["contextMode"] = self.location["context_mode"]
+
+        found = {}
+        source_ids = set()
+        expected_total = None
+        expected_pages = None
+        for page in range(1, self.max_pages + 1):
+            params = dict(base_params)
+            if page > 1:
+                params["page"] = page
+            url = BASE_URL + category_path + "?" + urlencode(params)
+            response = self._get(
+                url,
+                headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
+            )
+            script = BeautifulSoup(response.text, "html.parser").find("script", id="__NEXT_DATA__")
+            if script is not None and script.string:
+                payload = json.loads(script.string)
+            else:
+                # GitHub-hosted runners have intermittently challenged one of
+                # Coles' two equivalent public page-data routes. Try the page's
+                # Next data representation before retaining the old snapshot.
+                build_id = self.discover_build_id()
+                data_path = "/en" + category_path + ".json"
+                data_url = (f"{BASE_URL}/_next/data/{quote(build_id, safe='')}"
+                            f"{data_path}?{urlencode(params)}")
+                try:
+                    data_response = self._get(data_url)
+                except requests.RequestsError as exc:
+                    status = getattr(getattr(exc, "response", None), "status_code", None)
+                    if status != 404:
+                        raise
+                    build_id = self.discover_build_id(force=True)
+                    data_url = (f"{BASE_URL}/_next/data/{quote(build_id, safe='')}"
+                                f"{data_path}?{urlencode(params)}")
+                    data_response = self._get(data_url)
+                if "json" not in data_response.headers.get("content-type", "").lower():
+                    raise ScrapeError(
+                        "Coles returned bot protection on both category data routes. "
+                        "The last verified snapshot was retained."
+                    )
+                payload = data_response.json()
+            results, metadata = self._find_results(payload)
+            if not results:
+                break
+            if expected_total is None:
+                expected_total = int(metadata.get("noOfResults") or metadata.get("totalResults") or
+                                     metadata.get("total") or metadata.get("totalCount") or 0)
+                returned_page_size = int(metadata.get("pageSize") or self.page_size)
+                expected_pages = ((expected_total + returned_page_size - 1) // returned_page_size
+                                  if expected_total else None)
+                if expected_pages and expected_pages > self.max_pages:
+                    raise ScrapeError(
+                        f"Coles category requires {expected_pages} pages, exceeding the "
+                        f"configured limit of {self.max_pages}."
+                    )
+            for raw in results:
+                if not isinstance(raw, dict):
+                    continue
+                raw_id = str(raw.get("id") or raw.get("productId") or raw.get("code") or "").strip()
+                if raw_id:
+                    source_ids.add(raw_id)
+                product_id, product = self._product(raw)
+                if (product_id and product.get("category_group") and
+                        is_allowed_product(product["name"], product["brand"],
+                                           product["category_group"])):
+                    found["coles:" + product_id] = product
+            if expected_pages and page >= expected_pages:
+                break
+            time.sleep(self.delay)
+        if expected_total and len(source_ids) < expected_total:
+            raise ScrapeError(
+                f"Coles category pagination was incomplete: received {len(source_ids)} "
+                f"of {expected_total} products. The snapshot was not replaced."
+            )
+        return found
 
     def search(self, query):
         build_id = self.discover_build_id()
@@ -207,11 +306,7 @@ class ColesScraper:
         return found
 
     def scrape(self, queries):
-        products = {}
-        for index, query in enumerate(queries):
-            products.update(self.search(query))
-            if index + 1 < len(queries):
-                time.sleep(self.delay)
+        products = self.browse()
         if not products:
             raise ScrapeError("Coles returned no matching products. Snapshot was not replaced.")
         missing = [pid for pid, p in products.items() if not p["name"] or not p["product_url"]]

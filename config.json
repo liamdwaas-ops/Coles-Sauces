@@ -1,9 +1,12 @@
 {
-  "queries": ["pasta sauce", "tomato paste", "passata", "pesto"],
   "retailers": ["Coles", "Woolworths"],
-  "coles_verified_build_id_fallback": "20260818.2-7e2ae3d344c191b86ba032b60dd696513fb01a33",
+  "category_urls": {
+    "Coles": "https://www.coles.com.au/browse/pantry/sauces?sortBy=recommendedDescending",
+    "Woolworths": "https://www.woolworths.com.au/shop/browse/pantry/cooking-sauces-recipe-bases"
+  },
+  "coles_verified_build_id_fallback": "20260901.2-5f6f75a2b407f45bee8e67c4e72ffea1e3b9ff91",
   "page_size": 48,
-  "max_pages_per_query": 20,
+  "max_pages_per_category": 30,
   "request_delay_seconds": 1.0,
   "location": {
     "suburb": "Cheltenham",

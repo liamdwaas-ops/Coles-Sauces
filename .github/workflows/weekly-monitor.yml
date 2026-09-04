@@ -13,6 +13,7 @@ on:
       - ".send-latest-once"
       - ".send-test-once"
       - ".send-multibuy-test-once"
+      - ".source-smoke-once"
   schedule:
     # 06:00 AEST every Wednesday (fixed UTC+10; 07:00 local during AEDT).
     - cron: "0 20 * * 2"
@@ -44,6 +45,23 @@ jobs:
 
       - name: Run tests
         run: python -m unittest discover -s tests -v
+
+      - name: Validate live category sources once
+        if: ${{ hashFiles('.source-smoke-once') != '' }}
+        continue-on-error: true
+        env:
+          COLES_BUILD_ID: ${{ secrets.COLES_BUILD_ID }}
+          RETAIL_PROXY_URL: ${{ secrets.RETAIL_PROXY_URL }}
+        run: python run_monitor.py --source-smoke
+
+      - name: Retire source-validation marker
+        if: ${{ always() && hashFiles('.source-smoke-once') != '' }}
+        run: |
+          git config user.name "coles-monitor[bot]"
+          git config user.email "coles-monitor[bot]@users.noreply.github.com"
+          git rm .source-smoke-once
+          git commit -m "Mark live category validation as complete"
+          git push
 
       - name: Send explicit multibuy test once
         if: ${{ hashFiles('.send-multibuy-test-once') != '' }}

@@ -23,7 +23,25 @@ def keyword_group(name):
     return None
 
 
-def is_allowed_product(name, brand=""):
+def category_group(name, category_hint=""):
+    """Classify a category-page product using its title and retailer taxonomy."""
+    title_group = keyword_group(name)
+    if title_group:
+        return title_group
+    hint = normalize(category_hint).lower()
+    hint_words = set(re.findall(r"[a-z]+", hint))
+    if "tomato" in hint_words and "paste" in hint_words:
+        return "Tomato Paste"
+    if "passata" in hint_words:
+        return "Passata"
+    if "pesto" in hint_words:
+        return "Pesto"
+    if "pasta sauce" in hint or "pizza & pasta sauce" in hint:
+        return "Pasta Sauce"
+    return None
+
+
+def is_allowed_product(name, brand="", category_hint=""):
     normalized_name = normalize(name).lower()
     words = set(re.findall(r"[a-z]+", normalize(name).lower()))
     excluded_brands = {
@@ -39,7 +57,7 @@ def is_allowed_product(name, brand=""):
         "planter", "furniture",
     }
     excluded_title_phrases = excluded_brands | {"manual food chopper", "throw rug"}
-    return (is_wanted_name(name) and "fresh" not in words and
+    return (category_group(name, category_hint) is not None and "fresh" not in words and
             not words.intersection(excluded_non_food_words) and
             not any(re.search(r"\b" + re.escape(phrase) + r"\b", normalized_name)
                     for phrase in excluded_title_phrases) and

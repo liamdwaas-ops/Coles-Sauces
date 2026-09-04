@@ -1,23 +1,23 @@
 # Coles and Woolworths sauce product change monitor
 
-This repository checks Coles and Woolworths once a week for products whose **name** matches one of these rules:
+This repository checks these retailer category pages once a week:
 
-- contains both whole words `pasta` and `sauce` (in any order)
-- contains both whole words `tomato` and `paste` (in any order)
-- contains the whole word `passata`
-- contains the whole word `pesto`
+- Coles: `https://www.coles.com.au/browse/pantry/sauces?sortBy=recommendedDescending`
+- Woolworths: `https://www.woolworths.com.au/shop/browse/pantry/cooking-sauces-recipe-bases`
+
+Every page is retrieved before the results are filtered to the report categories **Pasta Sauce**, **Tomato Paste**, **Passata** and **Pesto**. Classification uses the product title plus retailer-provided category taxonomy where available. This includes pasta-sauce products such as Woolworths' Leggo's Stir Through range even when the title itself omits the word `pasta`.
 
 Products are excluded when the title contains the whole word `fresh`, when either the brand or title contains a configured ignored phrase, when their titles identify cooking utensils or decorative furniture, or when the retailer reports them as out of stock.
 
-It records product-name, current-price, pack-size, primary-image and **Online Only** status changes, plus newly listed matching products. A new flavour with a new SKU is reported as a **New product**; a flavour rename on an existing SKU is reported as **Name changed**. This avoids guessing whether marketing text represents a flavour. Online-only prices remain in the report and are visibly flagged.
+It records product-name, current-price, pack-size, ordered product-image and **Online Only** status changes, plus newly listed matching products. Image changes identify the affected retailer image position, such as `Image 2 changed` or `Image 4 added`. A new flavour with a new SKU is reported as **New**; a flavour rename on an existing SKU is reported as **Name**. This avoids guessing whether marketing text represents a flavour. Online-only promotions remain in the report and are labelled in the `Current Price` cell.
 
-Each weekly email and the main Coles/Woolworths workbook sheets contain only SKUs that changed versus the previous successful weekly snapshot, with one row per changed SKU. Unchanged catalogue SKUs are omitted. A compact `Change Summary` column sits beside the linked product name and combines simultaneous changes using brief labels such as `Price`, `New`, `Image`, `Unavailable`, or `Restocked`. Before, after and image columns are intentionally omitted; the separate `Change History` sheet remains the audit trail across runs.
+Each weekly email and the main Coles/Woolworths workbook sheets contain only SKUs that changed versus the previous successful weekly snapshot, with one row per changed SKU. Unchanged catalogue SKUs are omitted. Rows within each category are ordered by brand and then product name. The `Size` column sits immediately after the linked product name. A compact `Change Summary` distinguishes `RRP changed` from `Promotion` and combines simultaneous changes with labels such as `New`, `Image 2 changed`, `Unavailable`, or `Restocked`. Before, after and image columns are intentionally omitted; the separate `Change History` sheet remains the audit trail across runs.
 
 When a SKU was promotional in the previous weekly snapshot and has returned to full price, that SKU is retained in the workbook audit trail but omitted from the email body. If a run contains only promotion-ending changes, no email is sent.
 
-Current price, original price, promotional price and percentage discount have separate columns. These promotion fields are populated only when the retailer explicitly identifies a standard price reduction or multibuy offer.
+Current price, original price and percentage discount have separate columns. There is no redundant promotional-price or online-only column. Standard promotional prices already appear as `Current Price`; an online-only promotion is labelled there.
 
-Explicit multibuy offers such as `2 for $14.00` are recorded verbatim in the `Promotional Price` column. The discount percentage is calculated from the retailer-provided multibuy quantity and total against the current single-item price; no multibuy is inferred when the retailer does not provide an explicit offer.
+Explicit multibuy offers such as `2 for $14.00` are recorded verbatim in the `Current Price` column beside the single-item price. The discount percentage is calculated from the retailer-provided multibuy quantity and total against the current single-item price; no multibuy is inferred when the retailer does not provide an explicit offer.
 
 `Temporarily unavailable` products are shown once when they first enter that state, suppressed on subsequent runs, and shown again as `Back in stock` after availability returns. Other out-of-stock products are excluded.
 
@@ -43,12 +43,11 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 
 ## Data integrity behavior
 
-- A run where either retailer is blocked, empty, malformed or incomplete fails without replacing the last good combined snapshot or sending a partial report.
 - After a baseline exists, a temporarily blocked retailer retains its last verified records while the other retailer continues normally. The workflow emits a GitHub warning, never interprets the access failure as removals, and retries the retailer on the next scheduled run.
 - Coles' flag comes from `pricing.onlineSpecial`/an online promotion label; Woolworths' flag comes from `IsOnlineOnly`. The monitor does not infer this status from price differences.
-- Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used.
+- Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used. Coles is read from the server-rendered category pages rather than the JSON path that its bot protection blocked on the GitHub runner.
 - When `RETAIL_PROXY_URL` is present, both retailers use the same Australian proxy so their Cheltenham-context data is fetched consistently. The secret is never logged or written to a snapshot.
-- Coles build-ID discovery is automatic. `config.json` also contains a last-known build ID verified from the live homepage on 2026-08-24, used only if homepage discovery is challenged; a stale ID makes the run fail safely rather than emit partial data.
+- Both category scrapers validate pagination against the retailer's reported total before accepting a snapshot. An incomplete category traversal fails safely and retains the last verified retailer snapshot.
 - Change events have deterministic IDs and are stored in `data/events.json`, preventing duplicate reports.
 - The complete audit history and current combined catalogue are kept in `data/coles-woolworths-sauce-change-history.xlsx` and uploaded as a workflow artifact.
 - Every search includes postcode `3192` and delivery context. Prices should be treated as online prices returned for that location, not as a claim about shelf prices at an unspecified physical store.

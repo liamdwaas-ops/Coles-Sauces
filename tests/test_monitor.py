@@ -1,7 +1,8 @@
 import unittest
 
 from coles_monitor.changes import compare, consolidate_events, visible_products
-from coles_monitor.matcher import is_allowed_product, is_wanted_name, keyword_group, split_name_size
+from coles_monitor.matcher import (category_group, is_allowed_product, is_wanted_name,
+                                   keyword_group, split_name_size)
 from coles_monitor.reporting import (email_visible_events, render_baseline_html,
                                      render_html, write_workbook)
 from openpyxl import load_workbook
@@ -41,6 +42,12 @@ class MatcherTests(unittest.TestCase):
         self.assertEqual(keyword_group("Basil Pesto"), "Pesto")
         self.assertIsNone(keyword_group("Tomato Sauce"))
 
+    def test_retailer_taxonomy_classifies_stir_through_as_pasta_sauce(self):
+        name = "Leggo's Stir Through Sauce Roasted Vegetables"
+        taxonomy = 'PASTA SAUCE & CHEESE ["Italian", "Pizza & Pasta Sauce"]'
+        self.assertEqual(category_group(name, taxonomy), "Pasta Sauce")
+        self.assertTrue(is_allowed_product(name, "Leggo's", taxonomy))
+
 
 class ReportingTests(unittest.TestCase):
     def test_retailer_and_keyword_sections_do_not_duplicate_skus(self):
@@ -61,12 +68,16 @@ class ReportingTests(unittest.TestCase):
             workbook = load_workbook(path)
             self.assertEqual(workbook.sheetnames, ["Coles", "Woolworths", "Change History"])
             self.assertNotIn("Image URL", [cell.value for cell in workbook["Coles"][4]])
-            self.assertEqual([cell.value for cell in workbook["Coles"][4]][2:4],
-                             ["Product", "Change Summary"])
+            report_headers = [cell.value for cell in workbook["Coles"][4]]
+            self.assertEqual(report_headers[2:5], ["Product", "Size", "Change Summary"])
+            self.assertNotIn("Promotional Price (AUD)", report_headers)
+            self.assertNotIn("Online Only", report_headers)
             history_headers = [cell.value for cell in workbook["Change History"][1]]
             self.assertNotIn("Before", history_headers)
             self.assertNotIn("After", history_headers)
             self.assertNotIn("Image URL", history_headers)
+            self.assertNotIn("Promotional Price (AUD)", history_headers)
+            self.assertNotIn("Online Only", history_headers)
             ids = []
             for sheet_name in ("Coles", "Woolworths"):
                 ids.extend(cell.value for cell in workbook[sheet_name]["A"]
@@ -77,6 +88,30 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("<h2>Coles</h2>", html)
         self.assertIn("<h2>Woolworths</h2>", html)
         self.assertEqual(html.count(">Tomato Paste Passata</a>"), 1)
+        self.assertNotIn("<th>Promotional Price</th>", html)
+        self.assertNotIn("<th>Online Only</th>", html)
+        self.assertIn("<th>Product</th><th>Size</th>", html)
+
+    def test_email_orders_each_category_by_brand_and_marks_online_promotion(self):
+        products = {
+            "woolworths:1": {"retailer": "Woolworths", "brand": "Zulu",
+                              "name": "Zulu Pasta Sauce", "size": "500g", "price": 4.0,
+                              "product_url": "https://example/1", "availability_label": "Available"},
+            "woolworths:2": {"retailer": "Woolworths", "brand": "Alpha",
+                              "name": "Alpha Pasta Sauce", "size": "500g", "price": 3.0,
+                              "original_price": 4.0, "promotional_price": 3.0,
+                              "discount_percent": 0.25, "online_only": True,
+                              "product_url": "https://example/2", "availability_label": "Available"},
+        }
+        html = render_baseline_html(products)
+        self.assertLess(html.index("Alpha Pasta Sauce"), html.index("Zulu Pasta Sauce"))
+        self.assertIn("$3.00 (Online only promotion)", html)
+
+    def test_failed_retailer_is_not_described_as_no_changes(self):
+        html = render_html([], failures=["Coles: ScrapeError: blocked"])
+        coles_section = html.split("<h2>Coles</h2>", 1)[1].split("<h2>Woolworths</h2>", 1)[0]
+        self.assertIn("Refresh unavailable", coles_section)
+        self.assertNotIn("No changes", coles_section)
 
 
 class ScrapeFallbackTests(unittest.TestCase):
@@ -139,6 +174,17 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(product["promotional_price"], "2 for $10.00")
         self.assertEqual(product["discount_percent"], 0.1667)
 
+    def test_coles_ordered_images_are_retained(self):
+        _, product = ColesScraper._product({
+            "id": "4", "name": "Example Passata", "availability": True,
+            "pricing": {"now": 3.0},
+            "imageUris": [{"uri": "/4/4.jpg"}, {"uri": "/4/4_2.jpg"}],
+        })
+        self.assertEqual(product["image_urls"], [
+            "https://cdn.productimages.coles.com.au/productimages/4/4.jpg",
+            "https://cdn.productimages.coles.com.au/productimages/4/4_2.jpg",
+        ])
+
 
 class WoolworthsTests(unittest.TestCase):
     def test_nested_search_response_mapping(self):
@@ -159,6 +205,24 @@ class WoolworthsTests(unittest.TestCase):
         self.assertEqual(product["size"], "680g")
         self.assertEqual(product["price"], 2.25)
         self.assertFalse(product["online_only"])
+
+    def test_woolworths_taxonomy_and_ordered_images_are_retained(self):
+        _, product = WoolworthsScraper._product({
+            "Stockcode": 957033,
+            "Name": "Leggo's Stir Through Tomato Garlic & Caramelised Onion Sauce",
+            "Brand": "Leggo's", "Price": 4.3, "PackageSize": "350g",
+            "MediumImageFile": "https://cdn.example/medium/957033.jpg",
+            "AdditionalAttributes": {
+                "sapsubcategoryname": "PASTA SAUCE & CHEESE",
+                "sapsegmentname": "PASTA SAUCE STIR THRU",
+                "productimages": "957033.jpg,957033_2.jpg",
+            },
+        })
+        self.assertEqual(product["category_group"], "Pasta Sauce")
+        self.assertEqual(product["image_urls"], [
+            "https://cdn.example/medium/957033.jpg",
+            "https://cdn.example/medium/957033_2.jpg",
+        ])
 
     def test_woolworths_online_only_flag(self):
         _, product = WoolworthsScraper._product({
@@ -193,7 +257,7 @@ class WoolworthsTests(unittest.TestCase):
         old = {"woolworths:5": {**product, "promotional_price": None,
                                  "original_price": None, "discount_percent": None}}
         events = compare(old, {"woolworths:5": product}, "now")
-        self.assertEqual(events[0]["change_type"], "Price")
+        self.assertEqual(events[0]["change_type"], "Promotion")
         self.assertIn("2 for $6", render_html(events))
 
     def test_woolworths_availability_mapping(self):
@@ -269,9 +333,30 @@ class ChangeTests(unittest.TestCase):
             "2": {"name": "B Passata", "price": 3.0, "size": "700g", "image_url": "c", "product_url": "v"},
         }
         events = compare(old, new, "2026-01-01T00:00:00+00:00")
-        self.assertEqual([e["change_type"] for e in events], ["Price; Image", "New"])
+        self.assertEqual([e["change_type"] for e in events],
+                         ["RRP changed; Image 1 changed", "New"])
         self.assertEqual(len({e["product_id"] for e in events}), len(events))
         self.assertEqual(compare(old, new, "later", [e["event_id"] for e in events]), [])
+
+    def test_price_summaries_distinguish_rrp_and_promotion(self):
+        base = {"name": "A Pesto", "size": "100g", "image_url": "a",
+                "product_url": "u"}
+        rrp = compare({"1": {**base, "price": 4.0}},
+                      {"1": {**base, "price": 5.0}}, "now")
+        self.assertEqual(rrp[0]["change_type"], "RRP changed")
+        promotion = compare(
+            {"1": {**base, "price": 4.0, "original_price": None,
+                    "promotional_price": None, "discount_percent": None}},
+            {"1": {**base, "price": 3.0, "original_price": 4.0,
+                    "promotional_price": 3.0, "discount_percent": 0.25}}, "later")
+        self.assertEqual(promotion[0]["change_type"], "Promotion")
+
+    def test_image_change_names_the_positions(self):
+        base = {"name": "A Pesto", "price": 4.0, "size": "100g", "product_url": "u"}
+        old = {"1": {**base, "image_url": "a", "image_urls": ["a", "b", "c"]}}
+        new = {"1": {**base, "image_url": "a", "image_urls": ["a", "d", "c", "e"]}}
+        events = compare(old, new, "now")
+        self.assertEqual(events[0]["change_type"], "Image 2 changed; Image 4 added")
 
     def test_legacy_history_is_consolidated_per_sku_and_observation(self):
         events = [
