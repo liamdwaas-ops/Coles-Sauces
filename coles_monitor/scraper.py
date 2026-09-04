@@ -3,6 +3,7 @@ import json
 import os
 import re
 import time
+import uuid
 from urllib.parse import parse_qsl, quote, urlencode, urlparse
 
 from bs4 import BeautifulSoup
@@ -15,6 +16,9 @@ from .promotions import find_multibuy_text, multibuy_unit_price
 BASE_URL = "https://www.coles.com.au"
 CATEGORY_URL = BASE_URL + "/browse/pantry/sauces?sortBy=recommendedDescending"
 USER_AGENT = "Mozilla/5.0 (compatible; ColesProductChangeMonitor/1.0; personal-use)"
+BFF_BASE_URL = BASE_URL + "/api/bff"
+GRAPHQL_URL = BASE_URL + "/api/graphql"
+RUNTIME_CONFIG_URL = BASE_URL + "/statuscheck"
 
 
 class ScrapeError(RuntimeError):
@@ -31,6 +35,11 @@ class ColesScraper:
         self.proxy_url = os.getenv("RETAIL_PROXY_URL", "").strip()
         self.session = self._new_session()
         self.session.headers.update({"Accept": "application/json,text/html"})
+        self.api_session_id = str(uuid.uuid4())
+        self.api_visitor_id = str(uuid.uuid4())
+        self.bff_subscription_key = os.getenv(
+            "COLES_BFF_SUBSCRIPTION_KEY", ""
+        ).strip()
         self.build_id = (os.getenv("COLES_BUILD_ID", "").strip() or
                          normalize(verified_build_id_fallback))
         self.category_url = category_url or CATEGORY_URL
@@ -45,6 +54,194 @@ class ColesScraper:
         response = self.session.get(url, timeout=35, **kwargs)
         response.raise_for_status()
         return response
+
+    def _public_api_headers(self):
+        """Return the headers used by Coles' own anonymous storefront client."""
+        if not self.bff_subscription_key:
+            response = self._get(
+                RUNTIME_CONFIG_URL,
+                headers={"Accept": "text/html,application/xhtml+xml"},
+            )
+            match = re.search(
+                r'"BFF_API_SUBSCRIPTION_KEY"\s*:\s*"([^"]+)"', response.text
+            )
+            if not match:
+                raise ScrapeError(
+                    "Coles' public storefront API configuration was unavailable."
+                )
+            self.bff_subscription_key = html.unescape(match.group(1))
+        return {
+            "Accept": "application/json",
+            "Ocp-Apim-Subscription-Key": self.bff_subscription_key,
+            "dsch-channel": "coles.web",
+            "x-api-version": "2",
+            "x-correlation-id": str(uuid.uuid4()),
+            "x-session-id": self.api_session_id,
+            "x-visitor-id": self.api_visitor_id,
+            "Referer": self.category_url,
+        }
+
+    def _api_get(self, path, params=None):
+        response = self._get(
+            BFF_BASE_URL + path,
+            params=params or {},
+            headers=self._public_api_headers(),
+        )
+        if "json" not in response.headers.get("content-type", "").lower():
+            raise ScrapeError(f"Coles returned non-JSON data for {path}.")
+        return response.json()
+
+    def _resolve_store_id(self):
+        configured = normalize(
+            self.location.get("coles_store_id") or os.getenv("COLES_STORE_ID", "")
+        )
+        if configured:
+            return configured.removeprefix("COL:")
+
+        postcode = normalize(self.location.get("postcode"))
+        suburb = normalize(self.location.get("suburb"))
+        state = normalize(self.location.get("state"))
+        if not postcode:
+            raise ScrapeError("A postcode is required to select a Coles pricing store.")
+
+        suggestions = self._api_get(
+            "/locations/search/suggestions",
+            {"limit": 10, "searchTerm": postcode},
+        ).get("localities", [])
+        exact = [
+            item for item in suggestions
+            if normalize(item.get("postcode")) == postcode
+            and (not suburb or normalize(item.get("suburb")).casefold() == suburb.casefold())
+            and (not state or normalize(item.get("state")).casefold() == state.casefold())
+        ]
+        if not exact:
+            raise ScrapeError(
+                f"Coles did not return an exact locality for {suburb} {state} {postcode}."
+            )
+        locality = exact[0]
+        locations = self._api_get(
+            "/locations/search",
+            {"latitude": locality["latitude"], "longitude": locality["longitude"]},
+        ).get("locations", [])
+        matches = [
+            item for item in locations
+            if normalize(item.get("postcode")) == postcode
+            and item.get("fulfillmentStore", {}).get("storeId")
+        ]
+        if not matches:
+            raise ScrapeError(
+                f"Coles did not return a fulfilment store for postcode {postcode}."
+            )
+        matches.sort(key=lambda item: float(item.get("distance", {}).get("measurement") or 1e9))
+        return normalize(matches[0]["fulfillmentStore"]["storeId"])
+
+    def _resolve_category(self, store_id):
+        query = """
+            query GetProductCategories(
+              $storeId: BrandedId!, $withCampaignLinks: Boolean!
+            ) {
+              productCategories(
+                storeId: $storeId, withCampaignLinks: $withCampaignLinks
+              ) {
+                catalogGroupView {
+                  id name level seoToken
+                  catalogGroupView {
+                    id name level seoToken
+                    catalogGroupView { id name level seoToken }
+                  }
+                }
+              }
+            }
+        """
+        response = self.session.post(
+            GRAPHQL_URL,
+            json={
+                "query": query,
+                "variables": {
+                    "storeId": "COL:" + store_id,
+                    "withCampaignLinks": False,
+                },
+            },
+            headers={**self._public_api_headers(), "Content-Type": "application/json"},
+            timeout=35,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("errors"):
+            raise ScrapeError("Coles' category taxonomy API returned an error.")
+        nodes = (payload.get("data", {}).get("productCategories", {})
+                 .get("catalogGroupView", []))
+        tokens = [part for part in urlparse(self.category_url).path.split("/")
+                  if part and part != "browse"]
+        selected = None
+        for token in tokens:
+            selected = next(
+                (item for item in nodes if normalize(item.get("seoToken")) == token),
+                None,
+            )
+            if not selected:
+                break
+            nodes = selected.get("catalogGroupView") or []
+        if not selected or not tokens or normalize(selected.get("seoToken")) != tokens[-1]:
+            raise ScrapeError("Coles' configured sauce category was not found in its taxonomy.")
+        return selected
+
+    def _browse_public_api(self):
+        """Traverse the sauce category through Coles' anonymous storefront APIs."""
+        store_id = self._resolve_store_id()
+        category = self._resolve_category(store_id)
+        found = {}
+        source_ids = set()
+        expected_total = None
+        api_page_size = None
+
+        for page in range(self.max_pages):
+            start = page * (api_page_size or 20)
+            payload = self._api_get(
+                "/products/search",
+                {
+                    "storeId": store_id,
+                    "start": start,
+                    "sortBy": "recommendedDescending",
+                    "categoryId": category["id"],
+                    "categoryLevel": category["level"],
+                    "categoryName": category["name"],
+                },
+            )
+            results = payload.get("results") or []
+            if not results:
+                break
+            if expected_total is None:
+                expected_total = int(payload.get("noOfResults") or 0)
+                api_page_size = int(payload.get("pageSize") or 20)
+                expected_pages = ((expected_total + api_page_size - 1) // api_page_size
+                                  if expected_total else None)
+                if expected_pages and expected_pages > self.max_pages:
+                    raise ScrapeError(
+                        f"Coles category requires {expected_pages} API pages, exceeding "
+                        f"the configured limit of {self.max_pages}."
+                    )
+            for raw in results:
+                if not isinstance(raw, dict):
+                    continue
+                raw_id = normalize(raw.get("id") or raw.get("productId") or raw.get("code"))
+                if raw_id:
+                    source_ids.add(raw_id)
+                product_id, product = self._product(raw)
+                if (product_id and product.get("category_group") and
+                        is_allowed_product(product["name"], product["brand"],
+                                           product["category_group"])):
+                    found["coles:" + product_id] = product
+            if expected_total is not None and start + api_page_size >= expected_total:
+                break
+            time.sleep(self.delay)
+
+        if expected_total and len(source_ids) < expected_total:
+            raise ScrapeError(
+                f"Coles API pagination was incomplete: received {len(source_ids)} "
+                f"of {expected_total} products. The snapshot was not replaced."
+            )
+        return found
 
     def discover_build_id(self, force=False):
         if self.build_id and not force:
@@ -185,7 +382,7 @@ class ColesScraper:
             "product_url": product_url, "source": product_url,
         }
 
-    def browse(self):
+    def _browse_page_data(self):
         """Read every page of the configured Coles sauce category."""
         parsed = urlparse(self.category_url)
         category_path = parsed.path or "/browse/pantry/sauces"
@@ -272,6 +469,26 @@ class ColesScraper:
                 f"of {expected_total} products. The snapshot was not replaced."
             )
         return found
+
+    def browse(self):
+        """Prefer Coles' storefront API, retaining page-data as a compatibility fallback."""
+        api_error = None
+        try:
+            products = self._browse_public_api()
+            if products:
+                return products
+            api_error = ScrapeError("Coles' storefront API returned no matching products.")
+        except (requests.RequestsError, ValueError, KeyError, TypeError, ScrapeError) as exc:
+            api_error = exc
+
+        try:
+            return self._browse_page_data()
+        except Exception as page_error:
+            raise ScrapeError(
+                "Coles' public storefront API and category page both failed. "
+                f"API: {type(api_error).__name__}: {api_error}; "
+                f"page: {type(page_error).__name__}: {page_error}"
+            ) from page_error
 
     def search(self, query):
         build_id = self.discover_build_id()

@@ -144,6 +144,52 @@ class LocationTests(unittest.TestCase):
         scraper = ColesScraper(location=location)
         self.assertEqual(scraper.location, location)
 
+    def test_coles_resolves_exact_cheltenham_fulfilment_store(self):
+        scraper = ColesScraper(location={
+            "suburb": "Cheltenham", "postcode": "3192", "state": "VIC"
+        })
+
+        def fake_api_get(path, params=None):
+            if path.endswith("suggestions"):
+                return {"localities": [{
+                    "latitude": -37.96451, "longitude": 145.055873,
+                    "postcode": "3192", "suburb": "Cheltenham", "state": "VIC",
+                }]}
+            return {"locations": [{
+                "postcode": "3192", "distance": {"measurement": 0.77},
+                "fulfillmentStore": {"storeId": "669"},
+            }]}
+
+        scraper._api_get = fake_api_get
+        self.assertEqual(scraper._resolve_store_id(), "669")
+
+    def test_coles_public_api_paginates_by_returned_page_size(self):
+        scraper = ColesScraper(delay=0, max_pages=3, location={
+            "suburb": "Cheltenham", "postcode": "3192", "state": "VIC"
+        })
+        scraper._resolve_store_id = lambda: "669"
+        scraper._resolve_category = lambda store_id: {
+            "id": "9373", "level": 2, "name": "Sauces"
+        }
+        starts = []
+
+        def fake_api_get(path, params=None):
+            starts.append(params["start"])
+            offset = params["start"]
+            count = 20 if offset == 0 else 1
+            return {
+                "noOfResults": 21, "pageSize": 20,
+                "results": [{
+                    "id": offset + index + 1,
+                    "name": f"Example Passata {offset + index + 1}",
+                    "availability": True, "pricing": {"now": 3.0},
+                } for index in range(count)],
+            }
+
+        scraper._api_get = fake_api_get
+        self.assertEqual(len(scraper._browse_public_api()), 21)
+        self.assertEqual(starts, [0, 20])
+
     def test_coles_multibuy_text_is_captured(self):
         _, product = ColesScraper._product({
             "id": "1", "name": "Example Passata", "availability": True,
