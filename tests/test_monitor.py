@@ -185,6 +185,18 @@ class LocationTests(unittest.TestCase):
             "https://cdn.productimages.coles.com.au/productimages/4/4_2.jpg",
         ])
 
+    def test_coles_taxonomy_classifies_stir_through_as_pasta_sauce(self):
+        _, product = ColesScraper._product({
+            "id": "5", "name": "Roasted Vegetables Stir Through Sauce",
+            "brand": "Leggo's", "availability": True, "pricing": {"now": 4.6},
+            "merchandiseHeir": {
+                "category": "MEAL BASES", "subCategory": "PASTA SAUCE",
+                "className": "CHUNKY",
+            },
+            "onlineHeirs": [{"aisle": "Pizza & Pasta"}],
+        })
+        self.assertEqual(product["category_group"], "Pasta Sauce")
+
 
 class WoolworthsTests(unittest.TestCase):
     def test_nested_search_response_mapping(self):

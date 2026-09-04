@@ -154,7 +154,20 @@ class ColesScraper:
             availability_state = "temporary_unavailable"
         else:
             availability_state = "out_of_stock"
-        group = category_group(name)
+        merchandise_hierarchy = raw.get("merchandiseHeir") or {}
+        online_hierarchies = raw.get("onlineHeirs") or []
+        category_hint = " ".join(
+            normalize(value)
+            for value in (
+                merchandise_hierarchy.get("categoryGroup"),
+                merchandise_hierarchy.get("category"),
+                merchandise_hierarchy.get("subCategory"),
+                merchandise_hierarchy.get("className"),
+                *(hierarchy.get("aisle") for hierarchy in online_hierarchies
+                  if isinstance(hierarchy, dict)),
+            )
+        )
+        group = category_group(name, category_hint)
         return product_id, {
             "retailer": "Coles", "brand": normalize(raw.get("brand")), "name": name,
             "price": price,

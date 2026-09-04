@@ -45,7 +45,7 @@ Google App Passwords require 2-Step Verification. If Google Workspace policy blo
 
 - After a baseline exists, a temporarily blocked retailer retains its last verified records while the other retailer continues normally. The workflow emits a GitHub warning, never interprets the access failure as removals, and retries the retailer on the next scheduled run.
 - Coles' flag comes from `pricing.onlineSpecial`/an online promotion label; Woolworths' flag comes from `IsOnlineOnly`. The monitor does not infer this status from price differences.
-- Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used. Coles is read from the server-rendered category pages rather than the JSON path that its bot protection blocked on the GitHub runner.
+- Browser-fingerprinted sessions are used for compatibility with the retailers' public storefront data routes; no login, cart or checkout access is used. Coles is attempted through both the server-rendered category page and its equivalent public Next.js page-data route.
 - When `RETAIL_PROXY_URL` is present, both retailers use the same Australian proxy so their Cheltenham-context data is fetched consistently. The secret is never logged or written to a snapshot.
 - Both category scrapers validate pagination against the retailer's reported total before accepting a snapshot. An incomplete category traversal fails safely and retains the last verified retailer snapshot.
 - Change events have deterministic IDs and are stored in `data/events.json`, preventing duplicate reports.
