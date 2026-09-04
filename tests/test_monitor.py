@@ -175,8 +175,9 @@ class LocationTests(unittest.TestCase):
 
         def fake_api_get(path, params=None):
             starts.append(params["start"])
-            offset = params["start"]
-            count = 20 if offset == 0 else 1
+            page = params["start"]
+            offset = page * 20
+            count = 20 if page == 0 else 1
             return {
                 "noOfResults": 21, "pageSize": 20,
                 "results": [{
@@ -188,7 +189,7 @@ class LocationTests(unittest.TestCase):
 
         scraper._api_get = fake_api_get
         self.assertEqual(len(scraper._browse_public_api()), 21)
-        self.assertEqual(starts, [0, 20])
+        self.assertEqual(starts, [0, 1])
 
     def test_coles_multibuy_text_is_captured(self):
         _, product = ColesScraper._product({

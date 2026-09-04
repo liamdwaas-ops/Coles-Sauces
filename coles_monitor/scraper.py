@@ -196,12 +196,14 @@ class ColesScraper:
         api_page_size = None
 
         for page in range(self.max_pages):
-            start = page * (api_page_size or 20)
             payload = self._api_get(
                 "/products/search",
                 {
                     "storeId": store_id,
-                    "start": start,
+                    # Despite its name, Coles' public ``start`` parameter is a
+                    # zero-based page index. The response's ``pageSize`` is
+                    # still an item count used to determine the final page.
+                    "start": page,
                     "sortBy": "recommendedDescending",
                     "categoryId": category["id"],
                     "categoryLevel": category["level"],
@@ -232,7 +234,8 @@ class ColesScraper:
                         is_allowed_product(product["name"], product["brand"],
                                            product["category_group"])):
                     found["coles:" + product_id] = product
-            if expected_total is not None and start + api_page_size >= expected_total:
+            if (expected_total is not None and
+                    (page + 1) * api_page_size >= expected_total):
                 break
             time.sleep(self.delay)
 
