@@ -1,8 +1,10 @@
 import unittest
+from unittest.mock import patch
 
 from coles_monitor.changes import compare, consolidate_events, visible_products
 from coles_monitor.availability import (apply_availability_consensus,
                                         availability_backup_required)
+from coles_monitor.catalog import CombinedCategoryScraper
 from coles_monitor.matcher import (category_group, is_allowed_product, is_wanted_name,
                                    keyword_group, split_name_size)
 from coles_monitor.reporting import (email_visible_events, render_baseline_html,
@@ -112,6 +114,48 @@ class ReportingTests(unittest.TestCase):
     def test_test_baseline_is_clearly_labelled(self):
         html = render_baseline_html({}, test=True)
         self.assertIn("Live test baseline", html)
+
+    def test_retailer_specific_seafood_groups_and_email_title(self):
+        groups = {
+            "Coles": ("Fish & Seafood",),
+            "Woolworths": ("Canned Tuna", "Canned Salmon & Seafood"),
+        }
+        products = {
+            "coles:1": {"product_id": "coles:1", "retailer": "Coles",
+                        "brand": "A", "name": "A Sardines", "size": "100g",
+                        "price": 2.0, "category_group": "Fish & Seafood",
+                        "product_url": "https://example/1"},
+            "woolworths:2": {"product_id": "woolworths:2", "retailer": "Woolworths",
+                             "brand": "B", "name": "B Tuna", "size": "95g",
+                             "price": 3.0, "category_group": "Canned Tuna",
+                             "product_url": "https://example/2"},
+        }
+        html = render_baseline_html(products, groups=groups,
+                                    report_name="Shelf Seafood")
+        self.assertIn("Shelf Seafood", html)
+        self.assertIn("<h3>Fish &amp; Seafood</h3>", html)
+        self.assertIn("<h3>Canned Tuna</h3>", html)
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "seafood.xlsx"
+            write_workbook(path, [], products, report_events=list(products.values()),
+                           groups=groups)
+            workbook = load_workbook(path)
+            self.assertEqual(workbook.sheetnames,
+                             ["Coles", "Woolworths", "Change History"])
+            self.assertIn("ColesFishSeafoodTable", workbook["Coles"].tables)
+            with patch("coles_monitor.reporting.smtplib.SMTP_SSL") as smtp:
+                from coles_monitor.reporting import send_email
+                send_email("from@example.com", "to@example.com", "password", [], path,
+                           baseline=products, groups=groups,
+                           report_name="Shelf Seafood",
+                           attachment_filename="shelf-seafood.xlsx")
+                message = smtp.return_value.__enter__.return_value.send_message.call_args[0][0]
+                self.assertEqual(
+                    message["Subject"],
+                    "Coles & Woolworths Shelf Seafood product baseline - 2 products",
+                )
+                self.assertEqual(next(message.iter_attachments()).get_filename(),
+                                 "shelf-seafood.xlsx")
 
     def test_failed_retailer_is_not_described_as_no_changes(self):
         html = render_html([], failures=["Coles: ScrapeError: blocked"])
@@ -306,6 +350,16 @@ class WoolworthsTests(unittest.TestCase):
             "https://cdn.example/medium/957033_2.jpg",
         ])
 
+    def test_seafood_category_mode_does_not_apply_sauce_brand_exclusions(self):
+        scraper = WoolworthsScraper(report_group="Canned Tuna")
+        product_id, product = scraper._product({
+            "Stockcode": 123, "Name": "Sirena Tuna In Oil 95g", "Brand": "Sirena",
+            "PackageSize": "95g", "Price": 2.5, "IsAvailable": True,
+        })
+        self.assertEqual(product_id, "woolworths:123")
+        self.assertTrue(scraper._include_product(product))
+        self.assertEqual(product["category_group"], "Canned Tuna")
+
     def test_woolworths_online_only_flag(self):
         _, product = WoolworthsScraper._product({
             "Stockcode": 99, "Name": "Example Pesto 190g", "PackageSize": "190g",
@@ -353,6 +407,33 @@ class WoolworthsTests(unittest.TestCase):
             "IsAvailable": True, "IsInStock": False
         })
         self.assertEqual(out["availability_state"], "out_of_stock")
+
+
+class CombinedCategoryScraperTests(unittest.TestCase):
+    def test_combines_category_pages_without_duplicate_skus(self):
+        class FakeScraper:
+            def __init__(self, group, products):
+                self.report_group = group
+                self.category_url = "https://example.test/" + group
+                self.products = products
+
+            def scrape(self, queries):
+                return self.products
+
+        first = FakeScraper("Canned Tuna", {
+            "woolworths:1": {"name": "Tuna", "category_group": "Canned Tuna"},
+        })
+        second = FakeScraper("Canned Salmon & Seafood", {
+            "woolworths:1": {"name": "Duplicate", "category_group": "Other"},
+            "woolworths:2": {"name": "Salmon",
+                             "category_group": "Canned Salmon & Seafood"},
+        })
+        combined = CombinedCategoryScraper((first, second))
+        products = combined.scrape([])
+        self.assertEqual(set(products), {"woolworths:1", "woolworths:2"})
+        self.assertEqual(products["woolworths:1"]["name"], "Tuna")
+        self.assertEqual(combined.last_category_counts,
+                         {"Canned Tuna": 1, "Canned Salmon & Seafood": 2})
 
 
 class OnlineOnlyChangeTests(unittest.TestCase):
