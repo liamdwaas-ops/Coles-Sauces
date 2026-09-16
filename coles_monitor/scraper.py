@@ -121,15 +121,20 @@ class ColesScraper:
         ).get("locations", [])
         matches = [
             item for item in locations
-            if normalize(item.get("postcode")) == postcode
-            and item.get("fulfillmentStore", {}).get("storeId")
+            if item.get("fulfillmentStore", {}).get("storeId")
         ]
         if not matches:
             raise ScrapeError(
-                f"Coles did not return a fulfilment store for postcode {postcode}."
+                f"Coles did not return a fulfilment store near {suburb} {state} {postcode}."
             )
-        matches.sort(key=lambda item: float(item.get("distance", {}).get("measurement") or 1e9))
-        return normalize(matches[0]["fulfillmentStore"]["storeId"])
+        exact_postcode = [
+            item for item in matches if normalize(item.get("postcode")) == postcode
+        ]
+        candidates = exact_postcode or matches
+        candidates.sort(
+            key=lambda item: float(item.get("distance", {}).get("measurement") or 1e9)
+        )
+        return normalize(candidates[0]["fulfillmentStore"]["storeId"])
 
     def _resolve_category(self, store_id):
         query = """

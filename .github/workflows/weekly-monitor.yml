@@ -15,6 +15,7 @@ on:
       - ".send-multibuy-test-once"
       - ".source-smoke-once"
       - ".send-live-baseline-once"
+      - ".availability-smoke-once"
   schedule:
     # 06:00 AEST every Wednesday (fixed UTC+10; 07:00 local during AEDT).
     - cron: "0 20 * * 2"
@@ -61,6 +62,21 @@ jobs:
           git config user.email "coles-monitor[bot]@users.noreply.github.com"
           git rm .source-smoke-once
           git commit -m "Mark live category validation as complete"
+          git push
+
+      - name: Validate dual-location availability once
+        if: ${{ hashFiles('.availability-smoke-once') != '' }}
+        env:
+          COLES_BUILD_ID: ${{ secrets.COLES_BUILD_ID }}
+        run: python run_monitor.py --availability-smoke
+
+      - name: Retire availability-validation marker
+        if: ${{ success() && hashFiles('.availability-smoke-once') != '' }}
+        run: |
+          git config user.name "coles-monitor[bot]"
+          git config user.email "coles-monitor[bot]@users.noreply.github.com"
+          git rm .availability-smoke-once
+          git commit -m "Mark availability validation as complete"
           git push
 
       - name: Send fresh live baseline test once

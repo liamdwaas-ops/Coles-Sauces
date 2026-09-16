@@ -6,6 +6,8 @@ from pathlib import Path
 import sys
 
 from coles_monitor.changes import compare, consolidate_events, visible_products
+from coles_monitor.availability import (apply_availability_consensus,
+                                        availability_backup_required)
 from coles_monitor.matcher import is_allowed_product
 from coles_monitor.promotions import find_multibuy_text
 from coles_monitor.reporting import email_visible_events, send_email, write_workbook
@@ -51,22 +53,58 @@ def save_json(path, value):
     temp.replace(path)
 
 
-def configured_scrapers(config):
+def configured_scrapers(config, location=None):
     category_urls = config.get("category_urls", {})
     max_pages = config.get("max_pages_per_category",
                            config.get("max_pages_per_query", 30))
     coles = ColesScraper(
         config["request_delay_seconds"], max_pages,
-        config["page_size"], config.get("location"),
+        config["page_size"], location or config.get("location"),
         config.get("coles_verified_build_id_fallback", ""),
         category_urls.get("Coles", "")
     )
     woolworths = WoolworthsScraper(
         config["request_delay_seconds"], max_pages,
-        config["page_size"], config.get("location"),
+        config["page_size"], location or config.get("location"),
         category_urls.get("Woolworths", "")
     )
     return coles, woolworths
+
+
+def apply_backup_availability(current, previous, config, failed_retailers=()):
+    """Confirm impaired availability against Broadway without changing primary prices."""
+    primary_location = config.get("location", {})
+    backup_location = config.get("backup_location", {})
+    if not backup_location:
+        return current, []
+    failed = set(failed_retailers)
+    backup_scrapers = dict(zip(("Coles", "Woolworths"),
+                               configured_scrapers(config, backup_location)))
+    merged = dict(current)
+    warnings = []
+    for retailer in ("Coles", "Woolworths"):
+        primary = {product_id: product for product_id, product in current.items()
+                   if product.get("retailer") == retailer}
+        if not primary or retailer in failed:
+            continue
+        previous_retailer = {
+            product_id: product for product_id, product in previous.items()
+            if product.get("retailer") == retailer
+        }
+        backup = {}
+        if availability_backup_required(primary, previous_retailer):
+            try:
+                backup = backup_scrapers[retailer].scrape([])
+            except Exception as exc:
+                warning = (f"{retailer} Broadway availability check: "
+                           f"{type(exc).__name__}: {exc}")
+                warnings.append(warning)
+                print(f"::warning title=Backup availability retained::{warning}",
+                      file=sys.stderr)
+        merged.update(apply_availability_consensus(
+            primary, backup, previous_retailer, primary_location, backup_location
+        ))
+    return merged, warnings
 
 
 def main():
@@ -80,6 +118,8 @@ def main():
     parser.add_argument("--send-multibuy-test", action="store_true")
     parser.add_argument("--source-smoke", action="store_true",
                         help="Validate both live category sources without writing or emailing")
+    parser.add_argument("--availability-smoke", action="store_true",
+                        help="Validate live primary/backup availability without writing or emailing")
     parser.add_argument("--reset-baseline", action="store_true",
                         help="Adopt the current catalogue without recording schema/filter changes")
     parser.add_argument("--fixture", help="Use a local JSON product snapshot (tests only)")
@@ -104,6 +144,26 @@ def main():
                 load_json(DATA / "current.json", {}).items()
                 if is_allowed_product(product.get("name", ""), product.get("brand", ""),
                                       product.get("category_group", ""))}
+    if args.availability_smoke:
+        current = {}
+        primary_counts = {}
+        for retailer, scraper in zip(("Coles", "Woolworths"),
+                                     configured_scrapers(config)):
+            products = scraper.scrape([])
+            primary_counts[retailer] = len(products)
+            current.update(products)
+        current, warnings = apply_backup_availability(current, previous, config)
+        backup_checked = sum(
+            bool(product.get("availability_locations", {}).get("Broadway NSW 2007"))
+            for product in current.values()
+        )
+        result = {"availability_smoke": primary_counts,
+                  "backup_products_checked": backup_checked,
+                  "availability_warnings": warnings}
+        print(json.dumps(result, sort_keys=True))
+        if warnings:
+            raise RuntimeError(json.dumps(result, sort_keys=True))
+        return
     history = consolidate_events(load_json(DATA / "events.json", []))
     workbook_path = DATA / "coles-woolworths-sauce-change-history.xlsx"
     if args.send_live_baseline_test:
@@ -120,6 +180,7 @@ def main():
                 for product_id, product in live.items()
                 if is_allowed_product(product.get("name", ""), product.get("brand", ""),
                                       product.get("category_group", ""))}
+        live, availability_warnings = apply_backup_availability(live, {}, config)
         baseline = visible_products({}, live, True)
         if not baseline:
             raise RuntimeError("No in-stock or newly unavailable products remained for the test")
@@ -131,7 +192,8 @@ def main():
         send_email(config["sender"], config["recipient"], password, [], workbook_path,
                    baseline=baseline, test=True)
         print(json.dumps({"live_baseline_email_products": len(baseline),
-                          "source_products": counts}, sort_keys=True))
+                          "source_products": counts,
+                          "availability_warnings": availability_warnings}, sort_keys=True))
         return
     if args.send_multibuy_test:
         test_events = []
@@ -179,10 +241,15 @@ def main():
     scrape_failures = []
     if args.fixture:
         current = load_json(Path(args.fixture), {})
+        availability_warnings = []
     else:
         coles, woolworths = configured_scrapers(config)
         current, scrape_failures = scrape_with_fallback(
             (("Coles", coles), ("Woolworths", woolworths)), [], previous
+        )
+        failed_retailers = {failure.split(":", 1)[0] for failure in scrape_failures}
+        current, availability_warnings = apply_backup_availability(
+            current, previous, config, failed_retailers
         )
     current = {product_id: product for product_id, product in current.items()
                if is_allowed_product(product.get("name", ""), product.get("brand", ""),
@@ -199,7 +266,8 @@ def main():
     save_json(DATA / "current.json", current)
     save_json(DATA / "events.json", updated_history)
     print(json.dumps({"products": len(current), "changes": len(events), "baseline": first_run,
-                      "retailer_failures": scrape_failures if not args.fixture else []}))
+                      "retailer_failures": scrape_failures if not args.fixture else [],
+                      "availability_warnings": availability_warnings}))
     if args.no_email:
         return
     password = os.environ.get("GMAIL_APP_PASSWORD", "")

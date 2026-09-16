@@ -17,6 +17,7 @@ def summarize_change_type(change_type):
         "Online Only status changed": "Online only",
         "New product": "New",
         "Temporarily unavailable": "Unavailable",
+        "No availability": "No availability",
         "Back in stock": "Restocked",
     }
     return summaries.get(change_type, change_type)
@@ -105,12 +106,17 @@ def compare(previous, current, observed_at, seen_event_ids=()):
         old = previous.get(product_id)
         current_status = product.get("availability_state", "in_stock")
         old_status = old.get("availability_state", "in_stock") if old else None
-        if current_status == "out_of_stock":
-            continue
-        if current_status == "temporary_unavailable":
-            if old_status == "temporary_unavailable":
+        if old and product.get("availability_consensus_migration"):
+            # Adopt the first dual-location state silently. Other fields still
+            # compare against the real prior product so genuine changes survive.
+            old_status = current_status
+        if current_status != "in_stock":
+            if old_status == current_status:
                 continue
-            candidates = [("Temporarily unavailable", old_status or "", "Temporarily unavailable")]
+            change = ("No availability" if current_status == "out_of_stock"
+                      else "Temporarily unavailable")
+            candidates = [(change, old_status or "",
+                           product.get("availability_label", change))]
         elif old_status in {"temporary_unavailable", "out_of_stock"}:
             candidates = [("Back in stock", old.get("availability_label", old_status),
                            product.get("availability_label", "Available"))]
@@ -208,6 +214,6 @@ def visible_products(previous, current, first_run=False):
         old_status = old.get("availability_state", "in_stock") if old else None
         if status == "in_stock":
             visible[product_id] = product
-        elif status == "temporary_unavailable" and (first_run or old_status != status):
+        elif status != "in_stock" and (first_run or old_status != status):
             visible[product_id] = product
     return visible

@@ -1,6 +1,8 @@
 import unittest
 
 from coles_monitor.changes import compare, consolidate_events, visible_products
+from coles_monitor.availability import (apply_availability_consensus,
+                                        availability_backup_required)
 from coles_monitor.matcher import (category_group, is_allowed_product, is_wanted_name,
                                    keyword_group, split_name_size)
 from coles_monitor.reporting import (email_visible_events, render_baseline_html,
@@ -166,6 +168,23 @@ class LocationTests(unittest.TestCase):
 
         scraper._api_get = fake_api_get
         self.assertEqual(scraper._resolve_store_id(), "669")
+
+    def test_coles_uses_nearest_store_when_locality_crosses_postcode_boundary(self):
+        scraper = ColesScraper(location={
+            "suburb": "Broadway", "postcode": "2007", "state": "NSW"
+        })
+        def api_get(path, params):
+            if path.endswith("suggestions"):
+                return {"localities": [{
+                    "postcode": "2007", "suburb": "Broadway", "state": "NSW",
+                    "latitude": -33.884366, "longitude": 151.196502,
+                }]}
+            return {"locations": [{
+                "postcode": "2037", "distance": {"measurement": 0.24},
+                "fulfillmentStore": {"storeId": "839"},
+            }]}
+        scraper._api_get = api_get
+        self.assertEqual(scraper._resolve_store_id(), "839")
 
     def test_coles_public_api_paginates_by_returned_page_size(self):
         scraper = ColesScraper(delay=0, max_pages=3, location={
@@ -382,10 +401,96 @@ class AvailabilityLifecycleTests(unittest.TestCase):
         self.assertEqual(back[0]["change_type"], "Restocked")
         self.assertEqual(visible_products(temporary, available), available)
 
-    def test_out_of_stock_is_hidden(self):
-        out = {"1": {"name": "A Passata", "availability_state": "out_of_stock"}}
-        self.assertEqual(compare({}, out, "now"), [])
-        self.assertEqual(visible_products({}, out), {})
+    def test_consensus_out_of_stock_is_shown_once(self):
+        out = {"1": {"name": "A Passata", "availability_state": "out_of_stock",
+                      "availability_label": "No availability in both locations",
+                      "product_url": "u"}}
+        events = compare({}, out, "now")
+        self.assertEqual(events[0]["change_type"], "No availability")
+        self.assertEqual(visible_products({}, out), out)
+        self.assertEqual(compare(out, out, "later"), [])
+        self.assertEqual(visible_products(out, out), {})
+
+
+class AvailabilityConsensusTests(unittest.TestCase):
+    primary_location = {"suburb": "Cheltenham", "state": "VIC", "postcode": "3192"}
+    backup_location = {"suburb": "Broadway", "state": "NSW", "postcode": "2007"}
+
+    @staticmethod
+    def product(state, label=None):
+        return {"retailer": "Coles", "name": "A Passata",
+                "availability_state": state,
+                "availability_label": label or state,
+                "product_url": "u"}
+
+    def merge(self, primary_state, backup_state=None, old_state=None, legacy=False):
+        primary = {"coles:1": self.product(primary_state)}
+        backup = ({} if backup_state is None else
+                  {"coles:1": self.product(backup_state)})
+        previous = ({} if old_state is None else {"coles:1": {
+            **self.product(old_state),
+            **({} if legacy else {"availability_consensus": "locations_agree"}),
+        }})
+        return apply_availability_consensus(
+            primary, backup, previous, self.primary_location, self.backup_location
+        )["coles:1"]
+
+    def test_primary_full_does_not_require_backup_without_prior_issue(self):
+        primary = {"coles:1": self.product("in_stock")}
+        self.assertFalse(availability_backup_required(primary, {}))
+        merged = self.merge("in_stock")
+        self.assertEqual(merged["availability_state"], "in_stock")
+        self.assertEqual(merged["availability_consensus"], "primary_fully_available")
+
+    def test_mixed_result_preserves_last_full_consensus(self):
+        merged = self.merge("out_of_stock", "in_stock", "in_stock")
+        self.assertEqual(merged["availability_state"], "in_stock")
+        self.assertEqual(merged["availability_consensus"], "mixed_preserved")
+
+    def test_mixed_result_does_not_report_partial_restock(self):
+        merged = self.merge("in_stock", "out_of_stock", "out_of_stock")
+        self.assertEqual(merged["availability_state"], "out_of_stock")
+        self.assertEqual(merged["availability_consensus"], "mixed_preserved")
+
+    def test_both_unavailable_records_consensus_issue(self):
+        merged = self.merge("out_of_stock", "out_of_stock", "in_stock")
+        self.assertEqual(merged["availability_state"], "out_of_stock")
+        self.assertIn("Cheltenham VIC 3192 and Broadway NSW 2007",
+                      merged["availability_label"])
+
+    def test_both_full_records_consensus_restock(self):
+        primary = {"coles:1": self.product("in_stock")}
+        previous = {"coles:1": self.product("out_of_stock")}
+        self.assertTrue(availability_backup_required(primary, previous))
+        merged = self.merge("in_stock", "in_stock", "out_of_stock")
+        self.assertEqual(merged["availability_state"], "in_stock")
+        self.assertIn("Available in", merged["availability_label"])
+
+    def test_different_issues_do_not_replace_previous_consensus(self):
+        merged = self.merge("temporary_unavailable", "out_of_stock", "in_stock")
+        self.assertEqual(merged["availability_state"], "in_stock")
+
+    def test_missing_backup_result_is_not_treated_as_unavailable(self):
+        merged = self.merge("out_of_stock", None, "in_stock")
+        self.assertEqual(merged["availability_state"], "in_stock")
+        self.assertEqual(
+            merged["availability_locations"]["Broadway NSW 2007"]["state"],
+            "unknown",
+        )
+
+    def test_legacy_single_location_issue_does_not_become_consensus(self):
+        merged = self.merge("out_of_stock", "in_stock", "out_of_stock", legacy=True)
+        self.assertEqual(merged["availability_state"], "in_stock")
+        self.assertTrue(merged["availability_consensus_migration"])
+
+    def test_consensus_migration_suppresses_false_restock_but_keeps_price_change(self):
+        old = {"1": {**self.product("out_of_stock"), "price": 4.0,
+                     "size": "700g", "image_url": "a"}}
+        new = {"1": {**self.product("in_stock"), "price": 5.0,
+                     "size": "700g", "image_url": "a",
+                     "availability_consensus_migration": True}}
+        events = compare(old, new, "now")
+        self.assertEqual(events[0]["change_type"], "RRP changed")
 
 
 class ChangeTests(unittest.TestCase):
