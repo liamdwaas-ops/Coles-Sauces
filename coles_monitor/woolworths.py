@@ -18,13 +18,12 @@ CATEGORY_TREE_URL = BASE_URL + "/apis/ui/PiesCategoriesWithSpecials"
 
 class WoolworthsScraper:
     def __init__(self, delay=1.0, max_pages=30, page_size=36, location=None,
-                 category_url=CATEGORY_URL, report_group=""):
+                 category_url=CATEGORY_URL):
         self.delay = delay
         self.max_pages = max_pages
         self.page_size = min(page_size, 36)
         self.location = location or {}
         self.category_url = category_url or CATEGORY_URL
-        self.report_group = normalize(report_group)
         self.session = requests.Session(impersonate="chrome")
         self.primed = False
         self.session.headers.update({
@@ -32,14 +31,6 @@ class WoolworthsScraper:
             "Content-Type": "application/json",
             "Origin": BASE_URL,
         })
-
-    def _include_product(self, product):
-        if self.report_group:
-            product["category_group"] = self.report_group
-            return bool(product.get("name") and product.get("product_url"))
-        return bool(product.get("category_group") and
-                    is_allowed_product(product["name"], product["brand"],
-                                       product["category_group"]))
 
     @staticmethod
     def _find_products(payload):
@@ -221,7 +212,9 @@ class WoolworthsScraper:
                 if raw_id:
                     source_ids.add(raw_id)
                 product_id, product = self._product(raw)
-                if product_id != "woolworths:" and self._include_product(product):
+                if (product_id != "woolworths:" and product.get("category_group") and
+                        is_allowed_product(product["name"], product["brand"],
+                                           product["category_group"])):
                     found[product_id] = product
             if expected_pages and page >= expected_pages:
                 break
@@ -274,7 +267,8 @@ class WoolworthsScraper:
                 break
             for raw in products:
                 product_id, product = self._product(raw)
-                if product_id != "woolworths:" and self._include_product(product):
+                if (product_id != "woolworths:" and
+                        is_allowed_product(product["name"], product["brand"])):
                     found[product_id] = product
             if len(products) < self.page_size:
                 break

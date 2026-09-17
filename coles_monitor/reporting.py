@@ -1,7 +1,6 @@
 from email.message import EmailMessage
 from email.utils import formatdate
 from html import escape
-import re
 import smtplib
 
 from openpyxl import Workbook
@@ -30,10 +29,6 @@ def _sort_key(item):
     return (str(item.get("brand", "")).casefold(), str(item.get("name", "")).casefold())
 
 
-def _groups_for(retailer, groups):
-    return tuple(groups.get(retailer, ())) if isinstance(groups, dict) else tuple(groups)
-
-
 def _workbook_current_price(item):
     price = item.get("price")
     promotion = item.get("promotional_price")
@@ -60,7 +55,7 @@ def _style_sheet(ws, widths):
     ws.sheet_view.showGridLines = False
 
 
-def _write_retailer_sheet(wb, retailer, report_events, failed=False, groups=GROUPS):
+def _write_retailer_sheet(wb, retailer, report_events, failed=False):
     ws = wb.create_sheet(retailer, len(wb.sheetnames) - 1)
     last_column = get_column_letter(len(PRODUCT_HEADERS))
     ws.merge_cells(f"A1:{last_column}1")
@@ -82,7 +77,7 @@ def _write_retailer_sheet(wb, retailer, report_events, failed=False, groups=GROU
         return
     row = 3
     retailer_products = [event for event in report_events if event.get("retailer") == retailer]
-    for group_index, group in enumerate(_groups_for(retailer, groups), 1):
+    for group_index, group in enumerate(GROUPS, 1):
         ws.merge_cells(start_row=row, start_column=1, end_row=row,
                        end_column=len(PRODUCT_HEADERS))
         ws.cell(row, 1, group)
@@ -109,7 +104,7 @@ def _write_retailer_sheet(wb, retailer, report_events, failed=False, groups=GROU
                 ws.cell(data_row, column).number_format = '"$"0.00'
             ws.cell(data_row, 8).number_format = "0.0%"
         if matches:
-            table_name = re.sub(r"[^A-Za-z0-9_]", "", f"{retailer}{group}Table")
+            table_name = f'{retailer}{group.replace(" ", "")}Table'
             table = Table(displayName=table_name,
                           ref=f"A{header_row}:{last_column}{ws.max_row}")
             table.tableStyleInfo = TableStyleInfo(name=f"TableStyleMedium{group_index + 1}",
@@ -126,8 +121,7 @@ def _write_retailer_sheet(wb, retailer, report_events, failed=False, groups=GROU
     ws.sheet_view.showGridLines = False
 
 
-def write_workbook(path, events, current=None, report_events=None, failures=(),
-                   groups=GROUPS):
+def write_workbook(path, events, current=None, report_events=None, failures=()):
     wb = Workbook()
     ws = wb.active
     ws.title = "Change History"
@@ -151,25 +145,25 @@ def write_workbook(path, events, current=None, report_events=None, failures=(),
         failed_retailers = {str(failure).split(":", 1)[0] for failure in failures}
         for retailer in RETAILERS:
             _write_retailer_sheet(wb, retailer, report_events or [],
-                                  retailer in failed_retailers, groups)
+                                  retailer in failed_retailers)
     wb.save(path)
 
 
-def _sectioned_html(items, row_renderer, failures=(), groups=GROUPS):
+def _sectioned_html(items, row_renderer, failures=()):
     sections = []
     failed_retailers = {str(failure).split(":", 1)[0] for failure in failures}
     for retailer in RETAILERS:
-        sections.append(f"<h2>{escape(retailer)}</h2>")
+        sections.append(f"<h2>{retailer}</h2>")
         if retailer in failed_retailers:
             sections.append("<p><strong>Refresh unavailable.</strong> The last verified "
                             "snapshot was retained, so no no-change conclusion was made "
                             "for this retailer.</p>")
             continue
         retailer_items = [item for item in items if item.get("retailer") == retailer]
-        for group in _groups_for(retailer, groups):
+        for group in GROUPS:
             grouped = sorted((item for item in retailer_items
                               if _group_for(item) == group), key=_sort_key)
-            sections.append(f"<h3>{escape(group)}</h3>")
+            sections.append(f"<h3>{group}</h3>")
             sections.append(row_renderer(grouped))
     return "".join(sections)
 
@@ -197,7 +191,7 @@ def email_visible_events(events):
     return [event for event in events if not event.get("promotion_ended")]
 
 
-def render_html(events, failures=(), groups=GROUPS, report_name=""):
+def render_html(events, failures=()):
     events = email_visible_events(events)
     def render_table(grouped):
         if not grouped:
@@ -216,14 +210,12 @@ def render_html(events, failures=(), groups=GROUPS, report_name=""):
 <th>Brand</th><th>Product</th><th>Size</th><th>Change Summary</th><th>Current Price</th>
 <th>Original Price</th><th>Discount</th><th>Availability</th>
 </tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
-    report_label = f"{escape(report_name)} " if report_name else ""
-    return (f"<!doctype html><html><body><p>{report_label}changes detected since the "
-            "previous successful weekly run:</p>" +
-            _sectioned_html(events, render_table, failures, groups) +
+    return ("<!doctype html><html><body><p>Changes detected since the previous successful weekly run:</p>" +
+            _sectioned_html(events, render_table, failures) +
             "<p>Sources: Coles and Woolworths product pages linked above.</p></body></html>")
 
 
-def render_baseline_html(current, test=False, groups=GROUPS, report_name=""):
+def render_baseline_html(current, test=False):
     def render_table(grouped):
         if not grouped:
             return "<p>No matching SKUs.</p>"
@@ -241,50 +233,40 @@ def render_baseline_html(current, test=False, groups=GROUPS, report_name=""):
         return """<table style="border-collapse:collapse" border="1" cellpadding="6"><thead><tr>
 <th>Brand</th><th>Product</th><th>Size</th><th>Current Price</th><th>Original Price</th>
 <th>Discount</th><th>Availability</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table>"
-    product_label = f"{report_name} products" if report_name else "products"
-    intro = (f"Live test baseline for Coles and Woolworths {product_label} "
-             "requested for Cheltenham VIC 3192:" if test else
-             f"Initial Coles and Woolworths {product_label} baseline for "
-             "Cheltenham VIC 3192:")
+    intro = ("Live test baseline for Coles and Woolworths products requested for "
+             "Cheltenham VIC 3192:" if test else
+             "Initial Coles and Woolworths product baseline for Cheltenham VIC 3192:")
     return f"<!doctype html><html><body><p>{intro}</p>\n" + \
-        _sectioned_html(list(current.values()), render_table, groups=groups) + \
+        _sectioned_html(list(current.values()), render_table) + \
         "<p>Future emails will contain only new changes.</p></body></html>"
 
 
 def send_email(sender, recipient, app_password, events, workbook_path, baseline=None,
-               failures=(), test=False, groups=GROUPS, report_name="",
-               attachment_filename="coles-woolworths-sauce-change-history.xlsx"):
+               failures=(), test=False):
     msg = EmailMessage()
     msg["From"], msg["To"] = sender, recipient
     msg["Date"] = formatdate(localtime=False)
-    report_label = f" {report_name}" if report_name else ""
     if baseline is not None:
         prefix = "TEST - " if test else ""
-        msg["Subject"] = (f"{prefix}Coles & Woolworths{report_label} product baseline - "
+        msg["Subject"] = (f"{prefix}Coles & Woolworths product baseline - "
                           f"{len(baseline)} products")
         msg.set_content(("Live test baseline" if test else "Initial baseline") +
-                        f" for Coles and Woolworths{report_label} products. Open as HTML or see "
+                        " for Coles and Woolworths products. Open as HTML or see "
                         "the attached Excel workbook.")
-        msg.add_alternative(render_baseline_html(
-            baseline, test=test, groups=groups, report_name=report_name
-        ), subtype="html")
+        msg.add_alternative(render_baseline_html(baseline, test=test), subtype="html")
     else:
         events = email_visible_events(events)
         if failures and not events:
-            msg["Subject"] = (f"Coles & Woolworths{report_label} monitor warning - "
-                              "refresh incomplete")
+            msg["Subject"] = "Coles & Woolworths monitor warning — refresh incomplete"
             msg.set_content("A retailer could not be refreshed. The last verified snapshot was retained.")
         else:
-            msg["Subject"] = (f"Coles & Woolworths{report_label} product changes - "
-                              f"{len(events)} change{'s' if len(events) != 1 else ''}")
+            msg["Subject"] = f"Coles & Woolworths product changes — {len(events)} change{'s' if len(events) != 1 else ''}"
             msg.set_content("Changes were detected. Open this message as HTML or see the attached Excel history.")
-        msg.add_alternative(render_html(
-            events, failures, groups=groups, report_name=report_name
-        ), subtype="html")
+        msg.add_alternative(render_html(events, failures), subtype="html")
     with open(workbook_path, "rb") as handle:
         msg.add_attachment(handle.read(), maintype="application",
                            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                           filename=attachment_filename)
+                           filename="coles-woolworths-sauce-change-history.xlsx")
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
         smtp.login(sender, app_password)
         smtp.send_message(msg)

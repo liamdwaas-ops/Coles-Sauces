@@ -27,8 +27,7 @@ class ScrapeError(RuntimeError):
 
 class ColesScraper:
     def __init__(self, delay=1.0, max_pages=20, page_size=48, location=None,
-                 verified_build_id_fallback="", category_url=CATEGORY_URL,
-                 report_group=""):
+                 verified_build_id_fallback="", category_url=CATEGORY_URL):
         self.delay = delay
         self.max_pages = max_pages
         self.page_size = page_size
@@ -43,15 +42,6 @@ class ColesScraper:
         self.build_id = (os.getenv("COLES_BUILD_ID", "").strip() or
                          normalize(verified_build_id_fallback))
         self.category_url = category_url or CATEGORY_URL
-        self.report_group = normalize(report_group)
-
-    def _include_product(self, product):
-        if self.report_group:
-            product["category_group"] = self.report_group
-            return bool(product.get("name") and product.get("product_url"))
-        return bool(product.get("category_group") and
-                    is_allowed_product(product["name"], product["brand"],
-                                       product["category_group"]))
 
     def _new_session(self):
         return requests.Session(impersonate="chrome")
@@ -241,7 +231,9 @@ class ColesScraper:
                 if raw_id:
                     source_ids.add(raw_id)
                 product_id, product = self._product(raw)
-                if product_id and self._include_product(product):
+                if (product_id and product.get("category_group") and
+                        is_allowed_product(product["name"], product["brand"],
+                                           product["category_group"])):
                     found["coles:" + product_id] = product
             if (expected_total is not None and
                     (page + 1) * api_page_size >= expected_total):
@@ -468,7 +460,9 @@ class ColesScraper:
                 if raw_id:
                     source_ids.add(raw_id)
                 product_id, product = self._product(raw)
-                if product_id and self._include_product(product):
+                if (product_id and product.get("category_group") and
+                        is_allowed_product(product["name"], product["brand"],
+                                           product["category_group"])):
                     found["coles:" + product_id] = product
             if expected_pages and page >= expected_pages:
                 break
@@ -534,7 +528,7 @@ class ColesScraper:
                 if not isinstance(raw, dict):
                     continue
                 product_id, product = self._product(raw)
-                if product_id and self._include_product(product):
+                if product_id and is_allowed_product(product["name"], product["brand"]):
                     found["coles:" + product_id] = product
             total = (metadata.get("totalResults") or metadata.get("noOfResults") or
                      metadata.get("total") or metadata.get("totalCount"))

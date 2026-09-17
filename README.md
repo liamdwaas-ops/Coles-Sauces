@@ -25,19 +25,9 @@ The configured primary location is **Cheltenham VIC 3192**, with **Broadway NSW 
 
 The first successful run emails the complete baseline once. Later runs send an email only when at least one new, previously unreported change exists. Product names in the HTML email and Excel workbook link to their retailer product pages. No-change runs send nothing. Removed products are not treated as stock changes because absence from a category response is not reliable availability evidence; agreed two-location availability issues are reported under the consensus rule above.
 
-## Shelf Seafood monitor
-
-The repository also runs an independent **Shelf Seafood** monitor over these supplied category pages:
-
-- Coles: `https://www.coles.com.au/browse/pantry/canned-food-soups-noodles/fish-seafood`
-- Woolworths: `https://www.woolworths.com.au/shop/browse/pantry/canned-food-instant-meals/canned-tuna`
-- Woolworths: `https://www.woolworths.com.au/shop/browse/pantry/canned-food-instant-meals/canned-salmon-seafood`
-
-It applies the same pricing, promotion/multibuy, ordered-image, stock-consensus, change-only, deduplication and brand-ordering behavior as the Sauces monitor. It does not apply the sauce-specific keyword or ignored-brand filters: every valid SKU returned by the configured seafood category pages is eligible. Its email subject begins `Coles & Woolworths Shelf Seafood`, and its separate state and workbook are stored under `data/shelf-seafood/`.
-
 ## Schedule
 
-Both workflows run at `20:00 UTC Tuesday`, which is **06:00 AEST Wednesday**. Because AEST is a fixed UTC+10 offset, this is 07:00 in Sydney when daylight saving (AEDT) applies. They share a concurrency group and run one after the other to prevent snapshot commit conflicts. GitHub Actions schedules can start a few minutes late under load.
+The workflow runs at `20:00 UTC Tuesday`, which is **06:00 AEST Wednesday**. Because AEST is a fixed UTC+10 offset, this is 07:00 in Sydney when daylight saving (AEDT) applies. GitHub Actions schedules can start a few minutes late under load.
 
 ## Required GitHub repository setup
 

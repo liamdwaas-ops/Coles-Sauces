@@ -71,17 +71,15 @@ def configured_scrapers(config, location=None):
     return coles, woolworths
 
 
-def apply_backup_availability(current, previous, config, failed_retailers=(),
-                              scraper_factory=None):
+def apply_backup_availability(current, previous, config, failed_retailers=()):
     """Confirm impaired availability against Broadway without changing primary prices."""
     primary_location = config.get("location", {})
     backup_location = config.get("backup_location", {})
     if not backup_location:
         return current, []
     failed = set(failed_retailers)
-    scraper_factory = scraper_factory or configured_scrapers
     backup_scrapers = dict(zip(("Coles", "Woolworths"),
-                               scraper_factory(config, backup_location)))
+                               configured_scrapers(config, backup_location)))
     merged = dict(current)
     warnings = []
     for retailer in ("Coles", "Woolworths"):
